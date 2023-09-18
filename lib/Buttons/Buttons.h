@@ -7,7 +7,7 @@
 #define DEBOUNCE_DELAY      50
 #endif
 
-typedef std::function<void(const int)> ButtonCallback;
+typedef std::function<void()> ButtonCallback;
 
 class Buttons
 {
@@ -28,7 +28,7 @@ public:
     Buttons();
     ~Buttons();
 
-    void init(const uint8_t pinId, const bool active, ButtonCallback cb);
+    void init(const uint8_t pinId, ButtonCallback cb);
     void update();
     bool getState();
 };

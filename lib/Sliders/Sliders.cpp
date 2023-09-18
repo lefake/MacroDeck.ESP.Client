@@ -1,6 +1,6 @@
 #include "Sliders.h"
 
-Sliders::Sliders() { }
+Sliders::Sliders() : lastdB(0), pin(255) { }
 
 Sliders::~Sliders() { }
 
@@ -10,37 +10,27 @@ void Sliders::init(const uint8_t pinId)
   lastdB = 0;
 
   for (int i = 0; i < ROLLING_LENGTH; ++i)
-  {
     update();
-  }
-}
-
-void Sliders::update()
-{
-    int value = readValue();
-    double rawdB = todB(value);
-    currentdB = updateRolling(rawdB);
 }
 
 bool Sliders::getCurrent(double *current)
 {
   bool ret = abs(lastdB - currentdB) > CHANGE_THRES;
 
-  lastdB = currentdB;
-  *current = round2Digit(currentdB);
+  if (ret)
+  {
+    lastdB = currentdB;
+    *current = currentdB;
+  }
 
   return ret;
 }
 
-uint16_t Sliders::readValue()
+void Sliders::update()
 {
-    uint16_t value = analogRead(pin);
-    if (value < 100)
-    {
-        value = 100;
-    }
-
-    return value;
+    int value = readValue();
+    double rawSmoothed = updateRolling(value);
+    currentdB = dBMapping(rawSmoothed, ANALOG_LOW_THRESOLD, ANALOG_HIGH_THRESOLD, VM_DB_MIN, VM_DB_MAX);
 }
 
 double Sliders::updateRolling(double value)
@@ -58,19 +48,12 @@ double Sliders::updateRolling(double value)
   return rollingSum / ROLLING_LENGTH;
 }
 
-double Sliders::todB(double value)
+uint16_t Sliders::readValue()
 {
-  double dB = 10 * log10(value);
-  if (dB < MIN_DB)
-    dB = MIN_DB;
-  else if (dB > MAX_DB)
-    dB = MAX_DB;
+  uint16_t value = analogRead(pin);
 
-  return dB;
-}
+  if (value < ANALOG_LOW_THRESOLD)
+    value = ANALOG_LOW_THRESOLD;
 
-double Sliders::round2Digit(double value)
-{
-  int val = value * 100;
-  return (double) val / 100.;
+  return value;
 }

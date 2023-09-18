@@ -100,3 +100,4 @@ dkms.conf
 .vscode/launch.json
 .vscode/ipch
 
+src/config.h

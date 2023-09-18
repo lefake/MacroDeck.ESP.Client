@@ -4,10 +4,10 @@ Buttons::Buttons() { }
 
 Buttons::~Buttons() { }
 
-void Buttons::init(const uint8_t pinId, const bool active, ButtonCallback cb)
+void Buttons::init(const uint8_t pinId, ButtonCallback cb)
 {
     pin = pinId;
-    activeState = active;
+    activeState = LOW;
     callback = cb;
 
     currentState = activeState;
@@ -35,7 +35,7 @@ void Buttons::update()
             currentState = readState;
 
             if(currentState == activeState && callback != NULL)
-                callback(pin);
+                callback();
         }
     }
 
