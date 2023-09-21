@@ -1,39 +1,44 @@
-#include "Sliders.h"
+#include "Slider.h"
 
-Sliders::Sliders() : lastdB(0), pin(255) { }
+Slider::Slider() : lastdB(0), pin(255) { }
 
-Sliders::~Sliders() { }
+Slider::~Slider() { }
 
-void Sliders::init(const uint8_t pinId)
+bool Slider::init(const uint8_t pinId)
 {
   pin = pinId;
   lastdB = 0;
 
   for (int i = 0; i < ROLLING_LENGTH; ++i)
     update();
+
+  return true;
 }
 
-bool Sliders::getCurrent(double *current)
+bool Slider::getCurrent(double *current)
 {
   bool ret = abs(lastdB - currentdB) > CHANGE_THRES;
+  
 
   if (ret)
   {
     lastdB = currentdB;
     *current = currentdB;
   }
+  else
+    *current = lastdB;
 
   return ret;
 }
 
-void Sliders::update()
+void Slider::update()
 {
     int value = readValue();
     double rawSmoothed = updateRolling(value);
     currentdB = dBMapping(rawSmoothed, ANALOG_LOW_THRESOLD, ANALOG_HIGH_THRESOLD, VM_DB_MIN, VM_DB_MAX);
 }
 
-double Sliders::updateRolling(double value)
+double Slider::updateRolling(double value)
 {
   // Remove current index value from sum
   rollingSum -= rollingMean[rollingIndex];
@@ -48,7 +53,7 @@ double Sliders::updateRolling(double value)
   return rollingSum / ROLLING_LENGTH;
 }
 
-uint16_t Sliders::readValue()
+uint16_t Slider::readValue()
 {
   uint16_t value = analogRead(pin);
 

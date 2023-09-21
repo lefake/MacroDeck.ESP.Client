@@ -1,24 +1,22 @@
-#include "Buttons.h"
+#include "Button.h"
 
-Buttons::Buttons() { }
-
-Buttons::~Buttons() { }
-
-void Buttons::init(const uint8_t pinId, ButtonCallback cb)
+bool Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
 {
+    hardwareId = hId;
     pin = pinId;
-    activeState = LOW;
     callback = cb;
 
-    currentState = activeState;
-    lastState = activeState;
+    currentState = BTN_ACTIVE;
+    lastState = BTN_ACTIVE;
     lastDebounceTime = 0;
     lastUpdateTime = 0;
 
     pinMode(pin, INPUT_PULLUP);
+
+    return true;
 }
 
-void Buttons::update()
+void Button::update()
 {
     if (!isTimeToUpdate())
         return;
@@ -34,20 +32,20 @@ void Buttons::update()
         {
             currentState = readState;
 
-            if(currentState == activeState && callback != NULL)
-                callback();
+            if(currentState == BTN_ACTIVE && callback != NULL)
+                callback(hardwareId);
         }
     }
 
     lastState = readState;
 }
 
-bool Buttons::getState()
+bool Button::getState()
 {
     return currentState;
 }
 
-bool Buttons::isTimeToUpdate() 
+bool Button::isTimeToUpdate() 
 {
   return (millis() - lastDebounceTime) > (DEBOUNCE_DELAY / 8);
 }

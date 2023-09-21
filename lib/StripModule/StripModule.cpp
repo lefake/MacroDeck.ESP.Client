@@ -1,61 +1,60 @@
 #include "StripModule.h"
-
 #include "utils.h"
 
-StripModule::StripModule() : buttonChanged(false)
+uint8_t StripModule::hardwareId = 0;
+
+bool StripModule::init(const uint8_t sPins[NB_STRIPS], const uint8_t bPins[NB_STRIPS], const uint8_t lPins[NB_STRIPS], const uint8_t nb)
 {
+    bool ret = true;
+    nbStrips = nb;
+
+    for (uint8_t i = 0; i < nbStrips; ++i)
+        ret &= strips[i].init(hardwareId++, sPins[i], bPins[i], lPins[i]);
+
+    return ret;
 }
 
-StripModule::~StripModule()
+bool StripModule::update()
 {
+    bool ret = true;
+
+    for (uint8_t i = 0; i < nbStrips; ++i)
+        ret &= strips[i].update();
+
+    return ret;
 }
 
-void StripModule::init(const uint8_t sId, const uint8_t sliderPin, const uint8_t buttonPin, const uint8_t muteLedPin)
+bool StripModule::apply(String body)
 {
-    stripId = sId;
-    slider.init(sliderPin);
-    button.init(buttonPin, [this]() { muteCallback(); });
-    ledPin = muteLedPin;
+    bool ret = true;
+    uint8_t mute = body.toInt();
 
-    pinMode(ledPin, OUTPUT);
-}
-
-void StripModule::update()
-{
-    button.update();
-    slider.update();
-}
-
-bool StripModule::getPushURI(String* uri)
-{
-    double gain = 0;
-    bool dataChanged = slider.getCurrent(&gain);
-    *uri = "/push_strip?s=" + String(stripId);
-
-    if(dataChanged)
-        *uri += "&g=" + String(gain);
-
-    if (buttonChanged)
+    for (uint8_t i = 0; i < nbStrips; ++i)
     {
-        *uri += "&m";
-        buttonChanged = false;
-        dataChanged = true;
+        ret &= strips[i].apply(0, mute & 0b1);
+        mute = mute >> 1;
     }
 
-    return dataChanged;
+    return ret;
 }
 
-void StripModule::apply(String body)
+bool StripModule::getCurrentURI(String* uri)
 {
-    digitalWrite(ledPin, char2Bool(body.charAt(0)));
-}
+    bool ret = false;
+    *uri = "/push?g=";
 
-String StripModule::getPullURI()
-{
-    return "/pull_strip?s=" + String(stripId);
-}
+    double gains[nbStrips] = { 0 };
+    uint8_t mute = 0;
+    bool tempMute;
 
-void StripModule::muteCallback()
-{
-    buttonChanged = true;
+    for (uint8_t i = 0; i < nbStrips; ++i)
+    {
+        ret |= strips[i].getState(&gains[i], &tempMute);
+        mute |= tempMute << i;
+        *uri += String(gains[i]) + ',';
+    }
+
+    *uri += "&m=" + String(mute);
+
+    return ret;
 }

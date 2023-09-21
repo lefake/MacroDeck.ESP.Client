@@ -1,5 +1,5 @@
-#ifndef SLIDERS_H_
-#define SLIDERS_H_
+#ifndef SLIDER_H_
+#define SLIDER_H_
 
 #include <Arduino.h>
 #include "utils.h"
@@ -28,7 +28,7 @@
 #define VM_DB_MAX               (12.0)
 #endif
 
-class Sliders
+class Slider
 {
 private:
     uint8_t pin;
@@ -43,10 +43,10 @@ private:
     uint16_t readValue();
     double updateRolling(double value);
 public:
-    Sliders();
-    ~Sliders();
+    Slider();
+    ~Slider();
 
-    void init(const uint8_t pin);
+    bool init(const uint8_t pin);
     void update();
     bool getCurrent(double *current);
 };

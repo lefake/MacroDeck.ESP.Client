@@ -1,5 +1,5 @@
-#ifndef BUTTONS_H_
-#define BUTTONS_H_
+#ifndef BUTTON_H_
+#define BUTTON_H_
 
 #include <Arduino.h>
 
@@ -7,13 +7,17 @@
 #define DEBOUNCE_DELAY      50
 #endif
 
-typedef std::function<void()> ButtonCallback;
+#ifndef BTN_ACTIVE
+#define BTN_ACTIVE          LOW
+#endif
 
-class Buttons
+typedef std::function<void(uint8_t hId)> ButtonCallback;
+
+class Button
 {
 private:
     uint8_t pin;
-    bool activeState;
+    uint8_t hardwareId;
 
     bool currentState;
     bool lastState;
@@ -25,10 +29,7 @@ private:
     bool isTimeToUpdate();
 
 public:
-    Buttons();
-    ~Buttons();
-
-    void init(const uint8_t pinId, ButtonCallback cb);
+    bool init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb);
     void update();
     bool getState();
 };

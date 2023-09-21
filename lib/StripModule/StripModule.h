@@ -2,32 +2,25 @@
 #define STRIP_MODULE_H_
 
 #include <Arduino.h>
-#include "Buttons.h"
-#include "Sliders.h"
+#include "Strip.h"
+
+#ifndef NB_STRIPS
+#define NB_STRIPS 5
+#endif
 
 class StripModule
 {
 private:
-    Sliders slider;
-    Buttons button;
-    uint8_t ledPin;
+    Strip strips[NB_STRIPS];
+    uint32_t nbStrips;
 
-    uint8_t stripId;
-
-    bool buttonChanged;
-
-    void muteCallback();
+    static uint8_t hardwareId;
 
 public:
-    StripModule();
-    ~StripModule();
-
-    void init(const uint8_t sId, const uint8_t sliderPin, const uint8_t buttonPin, const uint8_t muteLedPin);
-    
-    void update();
-    bool getPushURI(String* uri);
-    void apply(String body);
-    String getPullURI();
+    bool init(const uint8_t sPins[NB_STRIPS], const uint8_t bPins[NB_STRIPS], const uint8_t lPins[NB_STRIPS], const uint8_t nb);
+    bool update();
+    bool apply(String body);
+    bool getCurrentURI(String *uri);
 };
 
 #endif

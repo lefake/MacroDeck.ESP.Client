@@ -8,15 +8,10 @@
 #include "constants.h"
 #include "config.h"
 
-#include "Buttons.h"
-#include "Sliders.h"
 #include "ClientHttp.h"
 #include "StripModule.h"
+#include "MacroModule.h"
 #include "utils.h"
-
-// ===== Macro cb =====
-
-static void muteCallback(const int id);
 
 // ===== Tasks =====
 
@@ -24,15 +19,15 @@ static void pollVMTask(void * parameter);
 static void pushVMTask(void * parameter);
 static void pollStripsTask(void * parameter);
 
-// Strips modules
-static StripModule strips[NB_HARDWARE_STRIPS];
-static bool muteButtonStates[NB_HARDWARE_STRIPS];
+// Modules
+static StripModule strips;
+static MacroModule macros;
 
 // HTTP Client
 static ClientHttp client(serverIP, serverPort);
 
 
-
+static Strip strip;
 
 // Functions
 static void connectWifi();
@@ -40,22 +35,26 @@ static void setupOTA();
 
 void setup()
 {
-  Serial.begin(115200);
+    Serial.begin(115200);
 
-  connectWifi();
-  setupOTA();
+    connectWifi();
+    setupOTA();
 
-  for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
-    strips[i].init(vmStripID[i], sliderPins[i], muteButtonPins[i], muteLedPins[i]);
-    
-  //xTaskCreate(pollStripsTask, "Poll Strips", 2500, NULL, 1, NULL);
-  //xTaskCreate(pollVMTask, "Poll VM", 3000, NULL, 1, NULL);
-  //xTaskCreate(pushVMTask, "Push VM", 3000, NULL, 1, NULL);
+    strips.init(sliderPins, muteButtonPins, muteLedPins, 2);
+
+    String uri;
+    strips.getCurrentURI(&uri);
+    if(!client.httpPOSTRequest(uri, ""))
+        Serial.println("Sadge");
+
+    xTaskCreate(pollStripsTask, "Poll Strips", 2500, NULL, 1, NULL);
+    xTaskCreate(pollVMTask, "Poll VM", 3000, NULL, 1, NULL);
+    xTaskCreate(pushVMTask, "Push VM", 3000, NULL, 1, NULL);
 }
 
 void loop()
 {
-  ArduinoOTA.handle(); // TODO : Add switch to allow OTA 
+  // ArduinoOTA.handle(); // TODO : Add switch to allow OTA 
 }
 
 void pollVMTask(void * parameter)
@@ -66,12 +65,10 @@ void pollVMTask(void * parameter)
     Serial.printf("pollVM %i\n", uxTaskGetStackHighWaterMark(NULL));
 #endif
 
-    for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
-    {
-      String resp;
-      if(client.httpGETRequest(strips[i].getPullURI(), &resp))
-        strips[i].apply(resp);
-    }
+    String resp;
+    if(client.httpGETRequest("/pull", &resp))
+        if (resp.length() > 0)
+            strips.apply(resp);
 
     vTaskDelay(VM_POLLING_RATE / portTICK_PERIOD_MS);
   }
@@ -85,15 +82,10 @@ void pushVMTask(void * parameter)
     Serial.printf("pushVM %i\n", uxTaskGetStackHighWaterMark(NULL));
 #endif
 
-    for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
-    {
-      String uri;
-      if(strips[i].getPushURI(&uri))
-      {
+    String uri;
+    if(strips.getCurrentURI(&uri))
         if(!client.httpPOSTRequest(uri, ""))
-          Serial.printf("Sadge %i\n", i);
-      }
-    }
+          Serial.println("Sadge");
 
     vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
   }
@@ -106,9 +98,7 @@ void pollStripsTask(void * parameter)
 #ifdef DEBUG_STACK
     Serial.printf("pollSlidersTask %i\n", uxTaskGetStackHighWaterMark(NULL));
 #endif
-    for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
-      strips[i].update();
-
+    strips.update();
     vTaskDelay(SLIDERS_POLLING_RATE / portTICK_PERIOD_MS);
   }
 }
