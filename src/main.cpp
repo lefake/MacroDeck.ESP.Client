@@ -3,10 +3,9 @@
 #include <ArduinoOTA.h>
 #include <HTTPClient.h>
 
-#include <freertos/FreeRTOS.h>
-
-#include "constants.h"
+#include "Constants.h"
 #include "config.h"
+#include "errorCode.h"
 
 #include "ClientHttp.h"
 #include "StripModule.h"
@@ -17,7 +16,7 @@
 
 static void pollVMTask(void * parameter);
 static void pushVMTask(void * parameter);
-static void pollStripsTask(void * parameter);
+static void pollHardwareTask(void * parameter);
 
 // Modules
 static StripModule strips;
@@ -26,12 +25,17 @@ static MacroModule macros;
 // HTTP Client
 static ClientHttp client(serverIP, serverPort);
 
+static String pullBody;
+static String pushURI;
 
-static Strip strip;
+static int stackMin1 = 5000;
+static int stackMin2 = 5000;
+static int stackMin3 = 5000;
 
 // Functions
 static void connectWifi();
 static void setupOTA();
+static void errorHandler(int code);
 
 void setup()
 {
@@ -40,16 +44,12 @@ void setup()
     connectWifi();
     setupOTA();
 
-    strips.init(sliderPins, muteButtonPins, muteLedPins, 2);
+    strips.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
+    macros.init(macroButtonPins, NB_HARDWARE_MACRO);
 
-    String uri;
-    strips.getCurrentURI(&uri);
-    if(!client.httpPOSTRequest(uri, ""))
-        Serial.println("Sadge");
-
-    xTaskCreate(pollStripsTask, "Poll Strips", 2500, NULL, 1, NULL);
-    xTaskCreate(pollVMTask, "Poll VM", 3000, NULL, 1, NULL);
-    xTaskCreate(pushVMTask, "Push VM", 3000, NULL, 1, NULL);
+    xTaskCreate(pollHardwareTask, "Poll Hardware", 5000, NULL, 1, NULL);
+    xTaskCreate(pollVMTask, "Poll VM", 5000, NULL, 1, NULL);
+    xTaskCreate(pushVMTask, "Push VM", 5000, NULL, 1, NULL);
 }
 
 void loop()
@@ -62,13 +62,21 @@ void pollVMTask(void * parameter)
   for(;;)
   {
 #ifdef DEBUG_STACK
-    Serial.printf("pollVM %i\n", uxTaskGetStackHighWaterMark(NULL));
-#endif
+    int reste = uxTaskGetStackHighWaterMark(NULL);
 
-    String resp;
-    if(client.httpGETRequest("/pull", &resp))
-        if (resp.length() > 0)
-            strips.apply(resp);
+    if (reste < stackMin2)
+    {
+      stackMin2 = reste;
+      Serial.printf("pollVMTask %i\n", stackMin2);
+    }
+#endif
+    if(client.httpGETRequest("/pull", &pullBody))
+    {
+        if (pullBody.length() > 0)
+            strips.apply(pullBody);
+    }
+    else
+        errorHandler(HTTP_GET_FAILED);
 
     vTaskDelay(VM_POLLING_RATE / portTICK_PERIOD_MS);
   }
@@ -79,26 +87,41 @@ void pushVMTask(void * parameter)
   for(;;)
   {
 #ifdef DEBUG_STACK
-    Serial.printf("pushVM %i\n", uxTaskGetStackHighWaterMark(NULL));
-#endif
+    int reste = uxTaskGetStackHighWaterMark(NULL);
 
-    String uri;
-    if(strips.getCurrentURI(&uri))
-        if(!client.httpPOSTRequest(uri, ""))
-          Serial.println("Sadge");
+    if (reste < stackMin3)
+    {
+      stackMin3 = reste;
+      Serial.printf("pushVMTask %i\n", stackMin3);
+    }
+#endif
+    if(strips.getCurrentURI(&pushURI))
+        if(!client.httpPOSTRequest(pushURI, ""))
+          errorHandler(HTTP_POST_FAILED);
+
+    if(macros.getCurrentURI(&pushURI))
+        if(!client.httpPOSTRequest(pushURI, ""))
+          errorHandler(HTTP_POST_FAILED);
 
     vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
   }
 }
 
-void pollStripsTask(void * parameter)
+void pollHardwareTask(void * parameter)
 {
   for(;;)
   {
 #ifdef DEBUG_STACK
-    Serial.printf("pollSlidersTask %i\n", uxTaskGetStackHighWaterMark(NULL));
+    int reste = uxTaskGetStackHighWaterMark(NULL);
+
+    if (reste < stackMin1)
+    {
+      stackMin1 = reste;
+      Serial.printf("pollHardwareTask %i\n", stackMin1);
+    }
 #endif
     strips.update();
+    macros.update();
     vTaskDelay(SLIDERS_POLLING_RATE / portTICK_PERIOD_MS);
   }
 }
@@ -165,4 +188,9 @@ void setupOTA()
     });
 
   ArduinoOTA.begin();
+}
+
+void errorHandler(int code)
+{
+    Serial.printf("Error %i\n", code);
 }

@@ -1,39 +1,52 @@
 #include "MacroModule.h"
 
-MacroModule::MacroModule()
+uint8_t MacroModule::hardwareId = 0;
+
+bool MacroModule::init(const uint8_t bPins[NB_HARDWARE_MACRO], const uint32_t nb)
 {
+    bool ret = true;
+    nbButtons = nb;
+
+    for (uint8_t i = 0; i < nbButtons; ++i)
+        ret &= buttons[i].init(hardwareId++, bPins[i], [this](uint8_t id) { buttonPressCb(id); });
+
+    return ret;
 }
 
-MacroModule::~MacroModule()
+bool MacroModule::update()
 {
+    for (uint8_t i = 0; i < nbButtons; ++i)
+        buttons[i].update();
+
+    return true;
 }
 
-void MacroModule::init(const uint8_t buttonPins[], const uint8_t ledPins[], const uint32_t nb)
+bool MacroModule::apply()
 {
-    for (int i = 0; i < nb; ++i)
+    return true;
+}
+
+bool MacroModule::getCurrentURI(String* uri)
+{
+    *uri = "/pushMacro?m=";
+
+    uint32_t mute = 0;
+
+    for (uint8_t i = 0; i < nbButtons; ++i)
     {
-        // TODO hId
-        buttons[i].init(0, buttonPins[i], [this](uint8_t id) {});
-        pinMode(ledPins[i], OUTPUT);
+        if (buttonStates[i])
+        {
+            mute |= buttonStates[i] << i;
+            buttonStates[i] = false;
+        }
     }
+
+    *uri += String(mute);
+
+    return mute != 0;
 }
 
-void MacroModule::update()
+void MacroModule::buttonPressCb(uint8_t id)
 {
-
-}
-
-void MacroModule::apply()
-{
-
-}
-
-void MacroModule::getPushURI()
-{
-
-}
-
-void MacroModule::getPullURI()
-{
-
+    buttonStates[id] = true;
 }
