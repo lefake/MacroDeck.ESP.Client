@@ -16,10 +16,10 @@ bool Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
     return true;
 }
 
-void Button::update()
+bool Button::update()
 {
     if (!isTimeToUpdate())
-        return;
+        return true;
 
     int readState = digitalRead(pin);
 
@@ -38,6 +38,7 @@ void Button::update()
     }
 
     lastState = readState;
+    return true;
 }
 
 bool Button::getState()

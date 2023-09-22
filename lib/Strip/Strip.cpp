@@ -16,10 +16,7 @@ bool Strip::init(uint8_t hId, const uint8_t sPin, const uint8_t bPin, const uint
 
 bool Strip::update()
 {
-    button.update();
-    slider.update();
-
-    return true;
+    return button.update() && slider.update();
 }
 
 bool Strip::apply(double gain, bool mute)

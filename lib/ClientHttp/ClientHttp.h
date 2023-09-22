@@ -5,8 +5,6 @@
 #include <WiFi.h>
 #include <HTTPClient.h>
 
-#include "utils.h"
-
 class ClientHttp
 {
 private:
@@ -14,7 +12,6 @@ private:
     
 public:
     ClientHttp(String ip, String port);
-    ~ClientHttp();
 
     bool httpGETRequest(String uri, String* response);
     bool httpPOSTRequest(String uri, String body);

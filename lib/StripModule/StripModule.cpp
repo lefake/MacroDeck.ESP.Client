@@ -1,5 +1,4 @@
 #include "StripModule.h"
-#include "utils.h"
 
 uint8_t StripModule::hardwareId = 0;
 
@@ -7,7 +6,7 @@ bool StripModule::init(const uint8_t* sPins, const uint8_t* bPins, const uint8_t
 {
     bool ret = true;
     nbStrips = nb;
-    
+
     for (uint8_t i = 0; i < nbStrips; ++i)
         ret &= strips[i].init(hardwareId++, sPins[i], bPins[i], lPins[i]);
 

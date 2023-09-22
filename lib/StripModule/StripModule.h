@@ -3,12 +3,7 @@
 
 #include <Arduino.h>
 #include "Constants.h"
-
 #include "Strip.h"
-
-#ifndef NB_HARDWARE_STRIPS
-#define NB_HARDWARE_STRIPS 5
-#endif
 
 class StripModule
 {

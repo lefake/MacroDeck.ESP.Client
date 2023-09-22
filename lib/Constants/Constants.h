@@ -1,37 +1,45 @@
 #ifndef CONSTANTS_H_
 #define CONSTANTS_H_
 
-#include <Arduino.h>
-
+// ========== DEBUG ==========
 #define DEBUG
 #define DEBUG_STACK
 
+// ========== BUTTONS ==========
+#define DEBOUNCE_DELAY          50
+#define BTN_ACTIVE              LOW
 
-// ========== STRIP MODULES ==========
+// ========== SLIDERS ==========
+#define ROLLING_LENGTH          50
+#define CHANGE_THRES            (0.1)
+
+#define ANALOG_LOW_THRESOLD     100
+#define ANALOG_HIGH_THRESOLD    4095
+
+// ========== LEDS ==========
+
+// ========== MUX ==========
+#define MUX_EXP                 3
+#define MUX_NB_IN               8
+#define MUX_DISABLE             HIGH
+#define MUX_ENABLE              LOW
+
+// ========== MODULES ==========
 
 #define NB_HARDWARE_STRIPS      2
 #define NB_HARDWARE_MACRO       2
 
-static const uint8_t sliderPins[NB_HARDWARE_STRIPS] = { 34, 35, };
-static const uint8_t muteButtonPins[NB_HARDWARE_STRIPS] = { 4, 2, };   // { 4, 2, 15, 13, 12, 14, 27, 26 };
-static const uint8_t muteLedPins[NB_HARDWARE_STRIPS] = { 23, 22, };     // { 23, 22, 21, 19, 18, 5, 17, 16 };
-
-static const uint8_t macroButtonPins[NB_HARDWARE_MACRO] = { 27, 26, };   // { 4, 2, 15, 13, 12, 14, 27, 26 };
-
-// ========== SPEEDS ==========
-
+// ========== THREAD ==========
 #define SLIDERS_POLLING_RATE    10
 #define VM_POLLING_RATE         100
 #define VM_PUSHING_RATE         100
 
-// ========== HTTP / WIFI ==========
-
+// ========== WIFI ==========
 const String serverIP = "192.168.2.13";
 const String serverPort = "5000";
 
-// ========== VM ==========
-
-#define VM_DB_MIN           (-60)
-#define VM_DB_MAX           (12)
+// ========== VOICEMEETER ==========
+#define VM_DB_MIN               (-60.0)
+#define VM_DB_MAX               (12.0)
 
 #endif

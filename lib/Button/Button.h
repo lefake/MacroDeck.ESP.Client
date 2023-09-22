@@ -2,14 +2,7 @@
 #define BUTTON_H_
 
 #include <Arduino.h>
-
-#ifndef DEBOUNCE_DELAY
-#define DEBOUNCE_DELAY      50
-#endif
-
-#ifndef BTN_ACTIVE
-#define BTN_ACTIVE          LOW
-#endif
+#include "Constants.h"
 
 typedef std::function<void(uint8_t hId)> ButtonCallback;
 
@@ -30,7 +23,7 @@ private:
 
 public:
     bool init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb);
-    void update();
+    bool update();
     bool getState();
 };
 

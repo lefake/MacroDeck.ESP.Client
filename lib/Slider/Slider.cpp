@@ -1,9 +1,5 @@
 #include "Slider.h"
 
-Slider::Slider() : lastdB(0), pin(255) { }
-
-Slider::~Slider() { }
-
 bool Slider::init(const uint8_t pinId)
 {
   pin = pinId;
@@ -31,11 +27,12 @@ bool Slider::getCurrent(double *current)
   return ret;
 }
 
-void Slider::update()
+bool Slider::update()
 {
     int value = readValue();
     double rawSmoothed = updateRolling(value);
-    currentdB = dBMapping(rawSmoothed, ANALOG_LOW_THRESOLD, ANALOG_HIGH_THRESOLD, VM_DB_MIN, VM_DB_MAX);
+    currentdB = dBMapping(rawSmoothed);
+    return true;
 }
 
 double Slider::updateRolling(double value)
@@ -61,4 +58,19 @@ uint16_t Slider::readValue()
     value = ANALOG_LOW_THRESOLD;
 
   return value;
+}
+
+double Slider::dBMapping(double in)
+{
+    if (in < ANALOG_LOW_THRESOLD)
+        in = ANALOG_LOW_THRESOLD;
+
+    else if (in > ANALOG_HIGH_THRESOLD)
+        in = ANALOG_HIGH_THRESOLD;
+
+    double normalized = (in - ANALOG_LOW_THRESOLD) / (ANALOG_HIGH_THRESOLD - ANALOG_LOW_THRESOLD);
+    double mappedValue = log10(1 + 9 * normalized);
+    double dB = mappedValue * (VM_DB_MAX - VM_DB_MIN) + VM_DB_MIN;
+
+    return round(dB * 100.0) / 100.0;
 }
