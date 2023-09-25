@@ -40,7 +40,7 @@ bool StripModule::apply(String body)
 bool StripModule::getCurrentURI(String* uri)
 {
     bool ret = false;
-    *uri = "/push?g=";
+    *uri = "/push?";
 
     double gains[nbStrips] = { 0 };
     uint8_t mute = 0;
@@ -48,12 +48,26 @@ bool StripModule::getCurrentURI(String* uri)
 
     for (uint8_t i = 0; i < nbStrips; ++i)
     {
-        ret |= strips[i].getState(&gains[i], &tempMute);
+        if (strips[i].getState(&gains[i], &tempMute))
+        {
+            if (!ret)
+                *uri += "g=";
+                
+            *uri += String(strips[i].getHardwareId()) + ':' + (gains[i]) + ',';
+            ret = true;
+        }
+
         mute |= tempMute << i;
-        *uri += String(gains[i]) + ',';
     }
 
-    *uri += "&m=" + String(mute);
+    if (mute != 0)
+    {
+        if (ret)
+            *uri += "&";
+
+        *uri += "m=" + String(mute);
+        ret = true;
+    }
 
     return ret;
 }

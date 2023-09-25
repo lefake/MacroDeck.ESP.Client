@@ -21,6 +21,7 @@ public:
     bool update();
     bool apply(double gain, bool mute);
     bool getState(double *gain, bool *mute);
+    uint8_t getHardwareId();
 };
 
 #endif

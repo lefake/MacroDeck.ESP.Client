@@ -12,50 +12,62 @@
 #include "StripModule.h"
 #include "MacroModule.h"
 
-// ===== Tasks =====
-
-static void pollVMTask(void * parameter);
-static void pushVMTask(void * parameter);
-static void pollHardwareTask(void * parameter);
-
 // Modules
 static StripModule strips;
 static MacroModule macros;
+static Led statusLed;
 
 // HTTP Client
 static ClientHttp client(serverIP, serverPort);
 
 static String pullBody;
 static String pushURI;
+static uint16_t errorId;
 
 static int stackMin1 = 5000;
 static int stackMin2 = 5000;
 static int stackMin3 = 5000;
+static int stackMin4 = 5000;
 
-// Functions
-static void connectWifi();
+static TaskHandle_t pollHardwareHandle;
+static TaskHandle_t pollVMHandle;
+static TaskHandle_t pushVMHandle;
+
+// ========== Functions ==========
+static uint16_t connectWifi();
 static void setupOTA();
-static void errorHandler(int code);
+static void errorHandler(uint16_t code);
+
+// ===== Tasks =====
+static void pollVMTask(void * parameter);
+static void pushVMTask(void * parameter);
+static void pollHardwareTask(void * parameter);
+static void errorHandlingTask(void * parameter);
 
 void setup()
 {
     Serial.begin(115200);
 
-    connectWifi();
+    // Setup WiFi and OTA
+    uint16_t ret = connectWifi();
+
     setupOTA();
 
+    // Init modules
     strips.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
-    macros.init(macroButtonPins, NB_HARDWARE_MACRO);
+    macros.init(muxSelectPins, muxInputPin, NB_HARDWARE_MACRO);
+    statusLed.init(statusLedPin);
 
-    Serial.println("Sadge");
-
-    xTaskCreate(pollHardwareTask, "Poll Hardware", 5000, NULL, 1, NULL);
-    xTaskCreate(pollVMTask, "Poll VM", 5000, NULL, 1, NULL);
-    xTaskCreate(pushVMTask, "Push VM", 5000, NULL, 1, NULL);
+    // Start threads
+    xTaskCreate(pollHardwareTask, "Poll Hardware", 5000, NULL, 1, &pollHardwareHandle);
+    xTaskCreate(pollVMTask, "Poll VM", 5000, NULL, 1, &pollVMHandle);
+    xTaskCreate(pushVMTask, "Push VM", 5000, NULL, 1, &pushVMHandle);
+    xTaskCreate(errorHandlingTask, "Error Handling", 5000, NULL, 1, NULL);
 }
 
 void loop()
 {
+    // OTA
     ArduinoOTA.handle();
 }
 
@@ -124,11 +136,49 @@ void pollHardwareTask(void * parameter)
 #endif
         strips.update();
         macros.update();
-        vTaskDelay(SLIDERS_POLLING_RATE / portTICK_PERIOD_MS);
+        vTaskDelay(HARDWARE_POLLING_RATE / portTICK_PERIOD_MS);
     }
 }
 
-void connectWifi()
+void errorHandlingTask(void * parameter)
+{
+    for(;;)
+    {
+#ifdef DEBUG_STACK
+        int reste = uxTaskGetStackHighWaterMark(NULL);
+
+        if (reste < stackMin4)
+        {
+            stackMin4 = reste;
+            Serial.printf("errorHandlingTask %i\n", stackMin4);
+        }
+#endif
+
+        if (errorId)
+        {
+            switch (errorId)
+            {
+            case HTTP_POST_FAILED:
+                break;
+
+            case HTTP_GET_FAILED:
+                break;
+            
+            default:
+                break;
+            }
+        }
+
+        vTaskDelay(ERROR_HANDLING_RATE / portTICK_PERIOD_MS);
+    }
+}
+
+
+
+
+
+
+bool connectWifi()
 {
     IPAddress staticIP(ST_IP);
     IPAddress gateway(ST_GATEWAY);
@@ -136,23 +186,22 @@ void connectWifi()
 
     WiFi.config(staticIP, gateway, subnet);
     WiFi.setHostname(HOST_NAME);
+    
 
     WiFi.begin(ssid, password);
-#ifdef DEBUG
-    Serial.println("Connecting");
-#endif
-    // TODO : Timeout
-    while(WiFi.status() != WL_CONNECTED) { 
-    delay(500);
-#ifdef DEBUG
-    Serial.print(".");
-#endif
+    delay(WIFI_CONNECT_TIMEOUT);
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        WiFi.disconnect();
+        return false;
     }
+
 #ifdef DEBUG
-    Serial.println("");
     Serial.print("Connected to WiFi network with IP Address: ");
     Serial.println(WiFi.localIP());
 #endif
+
+    return true;
 }
 
 void setupOTA()
@@ -195,4 +244,7 @@ void setupOTA()
 void errorHandler(int code)
 {
     Serial.printf("Error %i\n", code);
+    statusLed.apply(HIGH);
+    vTaskDelay(100 / portTICK_PERIOD_MS);
+    statusLed.apply(LOW);
 }

@@ -33,7 +33,12 @@ bool Strip::getState(double *gain, bool *mute)
     if (buttonTrigged)
         buttonTrigged = false;
 
-    return gainUpdated || *mute;
+    return gainUpdated;
+}
+
+uint8_t Strip::getHardwareId()
+{
+    return hardwareId;
 }
 
 void Strip::buttonPressCb()
