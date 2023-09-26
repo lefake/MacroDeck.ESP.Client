@@ -2,22 +2,19 @@
 #define STRIP_MODULE_H_
 
 #include <Arduino.h>
+#include "Constants.h"
 #include "Strip.h"
-
-#ifndef NB_STRIPS
-#define NB_STRIPS 5
-#endif
 
 class StripModule
 {
 private:
-    Strip strips[NB_STRIPS];
+    Strip strips[NB_HARDWARE_STRIPS];
     uint32_t nbStrips;
 
     static uint8_t hardwareId;
 
 public:
-    bool init(const uint8_t sPins[NB_STRIPS], const uint8_t bPins[NB_STRIPS], const uint8_t lPins[NB_STRIPS], const uint8_t nb);
+    bool init(const uint8_t* sPins, const uint8_t* bPins, const uint8_t* lPins, const uint8_t nb);
     bool update();
     bool apply(String body);
     bool getCurrentURI(String *uri);

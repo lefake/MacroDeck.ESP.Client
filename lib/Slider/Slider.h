@@ -2,31 +2,7 @@
 #define SLIDER_H_
 
 #include <Arduino.h>
-#include "utils.h"
-
-#ifndef ROLLING_LENGTH
-#define ROLLING_LENGTH          50
-#endif
-
-#ifndef ANALOG_LOW_THRESOLD
-#define ANALOG_LOW_THRESOLD     100
-#endif
-
-#ifndef ANALOG_HIGH_THRESOLD
-#define ANALOG_HIGH_THRESOLD    4095
-#endif
-
-#ifndef CHANGE_THRES    
-#define CHANGE_THRES            (0.1)
-#endif 
-
-#ifndef VM_DB_MIN
-#define VM_DB_MIN               (-60.0)
-#endif
-
-#ifndef VM_DB_MAX
-#define VM_DB_MAX               (12.0)
-#endif
+#include "Constants.h"
 
 class Slider
 {
@@ -42,12 +18,11 @@ private:
     
     uint16_t readValue();
     double updateRolling(double value);
+    double dBMapping(double in);
 public:
-    Slider();
-    ~Slider();
 
     bool init(const uint8_t pin);
-    void update();
+    bool update();
     bool getCurrent(double *current);
 };
 

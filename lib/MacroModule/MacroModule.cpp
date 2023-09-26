@@ -1,39 +1,71 @@
 #include "MacroModule.h"
 
-MacroModule::MacroModule()
+uint8_t MacroModule::hardwareId = 0;
+
+bool MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb)
 {
+    return init(sPins, iPin, 255, nb);
 }
 
-MacroModule::~MacroModule()
+bool MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb)
 {
+    bool ret = true;
+    nbButtons = nb;
+
+    if (ePin == 255)
+        ret &= mux.init(sPins, nb);
+    else
+        ret &= mux.init(sPins, ePin, nb);
+
+    for (uint8_t i = 0; i < nbButtons; ++i)
+        ret &= buttons[i].init(hardwareId++, iPin, INPUT_PULLDOWN, HIGH, [this](uint8_t id) { buttonPressCb(id); });
+
+    return ret;
 }
 
-void MacroModule::init(const uint8_t buttonPins[], const uint8_t ledPins[], const uint32_t nb)
+bool MacroModule::update()
 {
-    for (int i = 0; i < nb; ++i)
+    bool ret = true;
+    mux.select(0);
+    for (uint8_t i = 0; i < nbButtons; ++i)
     {
-        // TODO hId
-        buttons[i].init(0, buttonPins[i], [this](uint8_t id) {});
-        pinMode(ledPins[i], OUTPUT);
+        ret &= buttons[i].update();
+        mux.next();
     }
+
+    return ret;
 }
 
-void MacroModule::update()
+bool MacroModule::apply()
 {
-
+    return true;
 }
 
-void MacroModule::apply()
+bool MacroModule::getCurrentURI(String* uri)
 {
+    *uri = "/pushMacro?m=";
 
+    uint32_t mute = 0;
+
+    for (uint8_t i = 0; i < nbButtons; ++i)
+    {
+        if (buttonStates[i])
+        {
+            mute |= buttonStates[i] << i;
+            buttonStates[i] = false;
+        }
+    }
+
+    if (mute != 0)
+        Serial.printf("Sending %i\n", mute);
+
+    *uri += String(mute);
+
+    return mute != 0;
 }
 
-void MacroModule::getPushURI()
+void MacroModule::buttonPressCb(uint8_t id)
 {
-
-}
-
-void MacroModule::getPullURI()
-{
-
+    buttonStates[id] = true;
+    Serial.printf("Trigged %i\n", id);
 }

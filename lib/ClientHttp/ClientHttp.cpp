@@ -5,8 +5,6 @@ ClientHttp::ClientHttp(String ip, String port)
     serverURL = "http://" + ip + ":" + port;
 }
 
-ClientHttp::~ClientHttp() { }
-
 bool ClientHttp::httpGETRequest(String uri, String* response)
 {
     HTTPClient http;

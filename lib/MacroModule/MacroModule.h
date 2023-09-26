@@ -2,27 +2,28 @@
 #define MACRO_MODULE_H_
 
 #include <Arduino.h>
+#include "Constants.h"
+#include "Mux.h"
 #include "Button.h"
-
-#ifndef NB_MACRO_BTN
-#define NB_MACRO_BTN 10
-#endif
 
 class MacroModule
 {
 private:
-    Button buttons[NB_MACRO_BTN];
-    uint8_t ledPins[NB_MACRO_BTN];
+    Mux mux;
+    Button buttons[NB_HARDWARE_MACRO];
+    bool buttonStates[NB_HARDWARE_MACRO];
 
+    uint8_t inputPin;
+    uint8_t nbButtons;
+    static uint8_t hardwareId;
+
+    void buttonPressCb(uint8_t id);
 public:
-    MacroModule();
-    ~MacroModule();
-
-    void init(const uint8_t buttonPins[], const uint8_t ledPins[], const uint32_t nb);
-    void update();
-    void apply();
-    void getPushURI();
-    void getPullURI();
+    bool init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb);
+    bool init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb);
+    bool update();
+    bool apply();
+    bool getCurrentURI(String* uri);
 };
 
 #endif
