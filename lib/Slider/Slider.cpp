@@ -1,21 +1,22 @@
 #include "Slider.h"
 
-bool Slider::init(const uint8_t pinId)
+uint16_t Slider::init(const uint8_t pinId)
 {
   pin = pinId;
   lastdB = 0;
 
-  for (int i = 0; i < ROLLING_LENGTH; ++i)
-    update();
+  uint16_t ret = OK;
 
-  return true;
+  for (int i = 0; i < ROLLING_LENGTH && ret == OK; ++i)
+    ret = update();
+
+  return ret;
 }
 
-bool Slider::getCurrent(double *current)
+uint16_t Slider::getCurrent(double *current)
 {
   bool ret = abs(lastdB - currentdB) > CHANGE_THRES;
   
-
   if (ret)
   {
     lastdB = currentdB;
@@ -24,15 +25,15 @@ bool Slider::getCurrent(double *current)
   else
     *current = lastdB;
 
-  return ret;
+  return ret ? OK : NO_SLIDER_UPDATE;
 }
 
-bool Slider::update()
+uint16_t Slider::update()
 {
     int value = readValue();
     double rawSmoothed = updateRolling(value);
     currentdB = dBMapping(rawSmoothed);
-    return true;
+    return OK;
 }
 
 double Slider::updateRolling(double value)

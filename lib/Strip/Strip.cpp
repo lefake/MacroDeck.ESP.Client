@@ -1,33 +1,42 @@
 #include "Strip.h"
 
-bool Strip::init(uint8_t hId, const uint8_t sPin, const uint8_t bPin, const uint8_t lPin)
+uint16_t Strip::init(uint8_t hId, const uint8_t sPin, const uint8_t bPin, const uint8_t lPin)
 {
-    bool ret = true;
+    uint16_t ret;
 
     hardwareId = hId;
     buttonTrigged = false;
 
-    ret &= button.init(hardwareId, bPin, [this](uint8_t id) { buttonPressCb(); });
-    ret &= slider.init(sPin);
-    ret &= muteLed.init(lPin);
+    ret = button.init(hardwareId, bPin, [this](uint8_t id) { buttonPressCb(); });
+    if (ret == OK)
+    {
+        ret = slider.init(sPin);
+        if (ret == OK)
+            ret = muteLed.init(lPin);
+    }
 
     return ret;
 }
 
-bool Strip::update()
+uint16_t Strip::update()
 {
-    return button.update() && slider.update();
+    uint16_t ret = button.update();
+
+    if (ret == OK)
+        ret = slider.update();
+    
+    return ret;
 }
 
-bool Strip::apply(double gain, bool mute)
+uint16_t Strip::apply(double gain, bool mute)
 {
     __unused(gain); // Used if motorized sliders
     return muteLed.apply(mute);
 }
 
-bool Strip::getState(double *gain, bool *mute)
+uint16_t Strip::getState(double *gain, bool *mute)
 {
-    bool gainUpdated = slider.getCurrent(gain);
+    uint16_t gainUpdated = slider.getCurrent(gain);
     *mute = buttonTrigged;
 
     if (buttonTrigged)

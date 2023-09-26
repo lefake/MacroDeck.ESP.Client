@@ -1,12 +1,13 @@
 #include "Mux.h"
 
-bool Mux::init(const uint8_t* sPins, const uint8_t ePin, const uint8_t nbV)
+uint16_t Mux::init(const uint8_t* sPins, const uint8_t ePin, const uint8_t nbV)
 {
     enablePin = ePin;
     nbValidIn = nbV;
     currentId = 0;
 
-    pinMode(enablePin, OUTPUT);
+    if (enablePin != 255)
+        pinMode(enablePin, OUTPUT);
     disable();
 
     for (uint8_t i = 0; i < MUX_EXP; ++i)
@@ -16,37 +17,29 @@ bool Mux::init(const uint8_t* sPins, const uint8_t ePin, const uint8_t nbV)
         digitalWrite(selectPins[i], LOW);
     }
 
-    return true;
+    return OK;
 }
 
-bool Mux::init(const uint8_t* sPins, const uint8_t nbV)
+uint16_t Mux::init(const uint8_t* sPins, const uint8_t nbV)
 {
-    enablePin = 255;
-    nbValidIn = nbV;
-    currentId = 0;
-
-    for (uint8_t i = 0; i < MUX_EXP; ++i)
-    {
-        selectPins[i] = sPins[i];
-        pinMode(selectPins[i], OUTPUT);
-        digitalWrite(selectPins[i], LOW);
-    }
-
-    return true;
+    return init(sPins, 255, nbV);
 }
 
-bool Mux::select(uint8_t id)
+uint16_t Mux::select(uint8_t id)
 {
     currentId = id;
+
+    disable();
+    
     for (uint8_t i = 0; i < MUX_EXP; ++i)
         digitalWrite(selectPins[i], (currentId >> i) & 0b1);
 
     vTaskDelay(SWITCH_TIME / portTICK_PERIOD_MS);
 
-    return true;
+    return OK;
 }
 
-bool Mux::next()
+uint16_t Mux::next()
 {
     return select((currentId + 1) % nbValidIn);
 }

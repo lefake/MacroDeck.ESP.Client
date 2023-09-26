@@ -3,6 +3,7 @@
 
 #include <Arduino.h>
 #include "Constants.h"
+#include "ErrorCode.h"
 
 class Slider
 {
@@ -19,11 +20,11 @@ private:
     uint16_t readValue();
     double updateRolling(double value);
     double dBMapping(double in);
-public:
 
-    bool init(const uint8_t pin);
-    bool update();
-    bool getCurrent(double *current);
+public:
+    uint16_t init(const uint8_t pin);
+    uint16_t update();
+    uint16_t getCurrent(double *current);
 };
 
 #endif
