@@ -1,6 +1,6 @@
 #include "Led.h"
 
-bool Led::init(const uint8_t ledPin)
+uint16_t Led::init(const uint8_t ledPin)
 {
     pin = ledPin;
     currentState = LOW;
@@ -8,15 +8,16 @@ bool Led::init(const uint8_t ledPin)
     pinMode(pin, OUTPUT);
     digitalWrite(pin, currentState);
 
-    return true;
+    return OK;
 }
 
-bool Led::apply(const bool state)
+uint16_t Led::apply(const bool state)
 {
     if (currentState == state)
-        return true;
+        return NO_LED_UPDATE;
     
     currentState = state;
     digitalWrite(pin, currentState);
-    return true;
+    return OK;
 }
+ 

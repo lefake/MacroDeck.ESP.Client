@@ -2,70 +2,73 @@
 
 uint8_t MacroModule::hardwareId = 0;
 
-bool MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb)
+uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb)
 {
     return init(sPins, iPin, 255, nb);
 }
 
-bool MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb)
+uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb)
 {
-    bool ret = true;
+    uint16_t ret;
     nbButtons = nb;
 
     if (ePin == 255)
-        ret &= mux.init(sPins, nb);
+        ret = mux.init(sPins, nb);
     else
-        ret &= mux.init(sPins, ePin, nb);
+        ret = mux.init(sPins, ePin, nb);
 
-    for (uint8_t i = 0; i < nbButtons; ++i)
-        ret &= buttons[i].init(hardwareId++, iPin, INPUT_PULLDOWN, HIGH, [this](uint8_t id) { buttonPressCb(id); });
-
-    return ret;
-}
-
-bool MacroModule::update()
-{
-    bool ret = true;
-    mux.select(0);
-    for (uint8_t i = 0; i < nbButtons; ++i)
+    if (ret == OK)
     {
-        ret &= buttons[i].update();
-        mux.next();
+        for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
+        {
+            ret = buttons[i].init(hardwareId++, iPin, INPUT_PULLDOWN, HIGH, [this](uint8_t id) { buttonPressCb(id); });
+        }
     }
 
     return ret;
 }
 
-bool MacroModule::apply()
+uint16_t MacroModule::update()
 {
-    return true;
+    uint16_t ret = mux.select(0);
+
+    for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
+    {
+        mux.enable();
+        ret = buttons[i].update();
+        if (ret == OK)
+            ret = mux.next();
+    }
+
+    return ret;
 }
 
-bool MacroModule::getCurrentURI(String* uri)
+uint16_t MacroModule::apply()
+{
+    return OK;
+}
+
+uint16_t MacroModule::getCurrentURI(String* uri)
 {
     *uri = "/pushMacro?m=";
 
-    uint32_t mute = 0;
+    uint32_t macro = 0;
 
     for (uint8_t i = 0; i < nbButtons; ++i)
     {
         if (buttonStates[i])
         {
-            mute |= buttonStates[i] << i;
+            macro |= buttonStates[i] << i;
             buttonStates[i] = false;
         }
     }
 
-    if (mute != 0)
-        Serial.printf("Sending %i\n", mute);
+    *uri += String(macro);
 
-    *uri += String(mute);
-
-    return mute != 0;
+    return macro != 0 ? OK : NO_MACRO_UPDATE;
 }
 
 void MacroModule::buttonPressCb(uint8_t id)
 {
     buttonStates[id] = true;
-    Serial.printf("Trigged %i\n", id);
 }

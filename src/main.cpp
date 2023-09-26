@@ -22,108 +22,73 @@ static ClientHttp client(serverIP, serverPort);
 
 static String pullBody;
 static String pushURI;
-static uint16_t errorId;
+static uint16_t fatalError = OK;
 
 static int stackMin1 = 5000;
 static int stackMin2 = 5000;
 static int stackMin3 = 5000;
 static int stackMin4 = 5000;
 
-static TaskHandle_t pollHardwareHandle;
+static TaskHandle_t pollHardwaregHandle;
 static TaskHandle_t pollVMHandle;
 static TaskHandle_t pushVMHandle;
+static TaskHandle_t errorHandlingHandle;
+
+static bool pollHardwareRun = true;
+static bool pollVMRun = true;
+static bool pushVMRun = true;
 
 // ========== Functions ==========
 static uint16_t connectWifi();
 static void setupOTA();
-static void errorHandler(uint16_t code);
+static void errorNotify(uint16_t code);
 
 // ===== Tasks =====
+static void pollHardwareTask(void * parameter);
 static void pollVMTask(void * parameter);
 static void pushVMTask(void * parameter);
-static void pollHardwareTask(void * parameter);
 static void errorHandlingTask(void * parameter);
 
 void setup()
 {
     Serial.begin(115200);
+    esp_sleep_enable_timer_wakeup(SLEEP_TIME_uS);
 
-    // Setup WiFi and OTA
-    uint16_t ret = connectWifi();
+    uint16_t ret = statusLed.init(statusLedPin);
+    ret |= strips.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
+    ret |= macros.init(muxSelectPins, muxInputPin, NB_HARDWARE_MACRO);
 
-    setupOTA();
+    if (GET_SEVERITY(ret) == SUCCESS)
+    {
+        ret = connectWifi();
+        if (ret == OK)
+        {
+            setupOTA();
+            // Start threads
+            xTaskCreate(pollHardwareTask, "Poll Hardware", 2000, NULL, 1, &pollHardwaregHandle);
+            xTaskCreate(pollVMTask, "Poll VM", 2500, NULL, 1, &pollVMHandle);
+            xTaskCreate(pushVMTask, "Push VM", 2500, NULL, 1, &pushVMHandle);
+        }
+        else
+            fatalError = WIFI_NOT_CONNECTED;
+    }
+    else
+        fatalError = INIT_FAILED;
 
-    // Init modules
-    strips.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
-    macros.init(muxSelectPins, muxInputPin, NB_HARDWARE_MACRO);
-    statusLed.init(statusLedPin);
-
-    // Start threads
-    xTaskCreate(pollHardwareTask, "Poll Hardware", 5000, NULL, 1, &pollHardwareHandle);
-    xTaskCreate(pollVMTask, "Poll VM", 5000, NULL, 1, &pollVMHandle);
-    xTaskCreate(pushVMTask, "Push VM", 5000, NULL, 1, &pushVMHandle);
-    xTaskCreate(errorHandlingTask, "Error Handling", 5000, NULL, 1, NULL);
+    xTaskCreate(errorHandlingTask, "Error Handling", 2000, NULL, 2, &errorHandlingHandle);
 }
 
 void loop()
 {
-    // OTA
     ArduinoOTA.handle();
 }
 
-void pollVMTask(void * parameter)
-{
-    for(;;)
-    {
-#ifdef DEBUG_STACK
-        int reste = uxTaskGetStackHighWaterMark(NULL);
-
-        if (reste < stackMin2)
-        {
-        stackMin2 = reste;
-        Serial.printf("pollVMTask %i\n", stackMin2);
-        }
-#endif
-        if(client.httpGETRequest("/pull", &pullBody))
-        {
-            if (pullBody.length() > 0)
-                strips.apply(pullBody);
-        }
-        else
-            errorHandler(HTTP_GET_FAILED);
-
-        vTaskDelay(VM_POLLING_RATE / portTICK_PERIOD_MS);
-    }
-}
-
-void pushVMTask(void * parameter)
-{
-    for(;;)
-    {
-#ifdef DEBUG_STACK
-        int reste = uxTaskGetStackHighWaterMark(NULL);
-
-        if (reste < stackMin3)
-        {
-            stackMin3 = reste;
-            Serial.printf("pushVMTask %i\n", stackMin3);
-        }
-#endif
-        if(strips.getCurrentURI(&pushURI))
-            if(!client.httpPOSTRequest(pushURI, ""))
-                errorHandler(HTTP_POST_FAILED);
-
-        if(macros.getCurrentURI(&pushURI))
-            if(!client.httpPOSTRequest(pushURI, ""))
-                errorHandler(HTTP_POST_FAILED);
-
-        vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
-    }
-}
+// ==================== Tasks ====================
 
 void pollHardwareTask(void * parameter)
 {
-    for(;;)
+    uint16_t ret;
+    while(pollHardwareRun)
     {
 #ifdef DEBUG_STACK
         int reste = uxTaskGetStackHighWaterMark(NULL);
@@ -134,14 +99,85 @@ void pollHardwareTask(void * parameter)
             Serial.printf("pollHardwareTask %i\n", stackMin1);
         }
 #endif
-        strips.update();
-        macros.update();
+        ret = strips.update();
+        if (GET_SEVERITY(ret) == SUCCESS)
+            ret = macros.update();
+
+        if (GET_SEVERITY(ret) != SUCCESS)
+            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
         vTaskDelay(HARDWARE_POLLING_RATE / portTICK_PERIOD_MS);
     }
+    vTaskDelete(NULL);
+}
+
+void pollVMTask(void * parameter)
+{
+    uint16_t ret;
+    while(pollVMRun)
+    {
+#ifdef DEBUG_STACK
+        int reste = uxTaskGetStackHighWaterMark(NULL);
+
+        if (reste < stackMin2)
+        {
+        stackMin2 = reste;
+        Serial.printf("pollVMTask %i\n", stackMin2);
+        }
+#endif
+        ret = client.httpGETRequest("/pull", &pullBody);
+
+        if (GET_SEVERITY(ret) == SUCCESS)
+            if (pullBody.length() > 0)
+                ret = strips.apply(pullBody);
+
+        if (GET_SEVERITY(ret) != SUCCESS)
+            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+        vTaskDelay(VM_POLLING_RATE / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
+void pushVMTask(void * parameter)
+{
+    uint16_t ret;
+    while(pushVMRun)
+    {
+#ifdef DEBUG_STACK
+        int reste = uxTaskGetStackHighWaterMark(NULL);
+
+        if (reste < stackMin3)
+        {
+            stackMin3 = reste;
+            Serial.printf("pushVMTask %i\n", stackMin3);
+        }
+#endif
+
+        ret = strips.getCurrentURI(&pushURI);
+
+        if (ret == OK)
+            ret = client.httpPOSTRequest(pushURI, "");
+
+        if (ret == OK)
+            ret = macros.getCurrentURI(&pushURI);
+
+        if (ret == OK)
+            ret = client.httpPOSTRequest(pushURI, "");
+
+
+        if (GET_SEVERITY(ret) != SUCCESS)
+            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+        vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
 }
 
 void errorHandlingTask(void * parameter)
 {
+    uint32_t ulNotificationValue;
+    uint16_t errorCode;
+    uint16_t severity;
+    uint16_t code;
+
     for(;;)
     {
 #ifdef DEBUG_STACK
@@ -153,32 +189,50 @@ void errorHandlingTask(void * parameter)
             Serial.printf("errorHandlingTask %i\n", stackMin4);
         }
 #endif
+        if (fatalError != OK)
+            while(1)
+                errorNotify(GET_CODE(fatalError));
 
-        if (errorId)
+        ulNotificationValue = ulTaskNotifyTake(pdTRUE, portMAX_DELAY);
+
+        if (ulNotificationValue != 0)
         {
-            switch (errorId)
-            {
-            case HTTP_POST_FAILED:
-                break;
+            errorCode = (uint16_t) ulNotificationValue;
+            severity = GET_SEVERITY(errorCode);
+            code = GET_CODE(errorCode);
 
-            case HTTP_GET_FAILED:
+            //Serial.printf("%i, %i\n", severity, code);
+
+            switch (severity)
+            {
+            case SUCCESS:
+            case WARNING:
+                // Do nothing
                 break;
-            
+            case ERROR:
+                errorNotify(code);
+                if (errorCode == HTTP_REFUSED)
+                {
+                    vTaskSuspend(pollHardwaregHandle);
+                    vTaskSuspend(pollVMHandle);
+                    vTaskSuspend(pushVMHandle);
+                    esp_deep_sleep_start();
+                }
+                break;
+            case FATAL:
             default:
+                pollHardwareRun = false;
+                pollVMRun = false;
+                pushVMRun = false;
+                fatalError = errorCode;
                 break;
             }
         }
-
-        vTaskDelay(ERROR_HANDLING_RATE / portTICK_PERIOD_MS);
     }
 }
 
-
-
-
-
-
-bool connectWifi()
+// ==================== Private ====================
+uint16_t connectWifi()
 {
     IPAddress staticIP(ST_IP);
     IPAddress gateway(ST_GATEWAY);
@@ -186,14 +240,16 @@ bool connectWifi()
 
     WiFi.config(staticIP, gateway, subnet);
     WiFi.setHostname(HOST_NAME);
-    
-
     WiFi.begin(ssid, password);
-    delay(WIFI_CONNECT_TIMEOUT);
+
+    unsigned long start = millis();
+
+    while(WiFi.status() != WL_CONNECTED && (millis() - start < WIFI_CONNECT_TIMEOUT));
+
     if (WiFi.status() != WL_CONNECTED)
     {
         WiFi.disconnect();
-        return false;
+        return WIFI_NOT_CONNECTED;
     }
 
 #ifdef DEBUG
@@ -201,50 +257,22 @@ bool connectWifi()
     Serial.println(WiFi.localIP());
 #endif
 
-    return true;
+    return OK;
 }
 
 void setupOTA()
 {
     ArduinoOTA.setHostname(HOST_NAME);
     ArduinoOTA.setPassword(OTA_PASSWORD);
-
-    ArduinoOTA
-        .onStart([]() {
-            Serial.println("Starting OTA");
-#ifdef DEBUG
-            String type;
-            if (ArduinoOTA.getCommand() == U_FLASH)
-                type = "sketch";
-            else
-                type = "filesystem";
-            Serial.println("Start updating " + type);
-#endif
-        })
-        .onEnd([]() {
-            Serial.println("\nEnd OTA");
-        })
-        .onProgress([](unsigned int progress, unsigned int total) {
-#ifdef DEBUG
-            Serial.printf("Progress: %u%%\r", (progress / (total / 100)));
-#endif
-        })
-        .onError([](ota_error_t error) {
-            Serial.printf("Error[%u]: ", error);
-            if (error == OTA_AUTH_ERROR) Serial.println("Auth Failed");
-            else if (error == OTA_BEGIN_ERROR) Serial.println("Begin Failed");
-            else if (error == OTA_CONNECT_ERROR) Serial.println("Connect Failed");
-            else if (error == OTA_RECEIVE_ERROR) Serial.println("Receive Failed");
-            else if (error == OTA_END_ERROR) Serial.println("End Failed");
-        });
-
+    ArduinoOTA.onError([](ota_error_t error) { fatalError = OTA_ERROR; });
     ArduinoOTA.begin();
 }
 
-void errorHandler(int code)
+void errorNotify(uint16_t code)
 {
-    Serial.printf("Error %i\n", code);
+    int time = code * 100;
     statusLed.apply(HIGH);
-    vTaskDelay(100 / portTICK_PERIOD_MS);
+    vTaskDelay(time / portTICK_PERIOD_MS);
     statusLed.apply(LOW);
+    vTaskDelay(time / portTICK_PERIOD_MS);
 }

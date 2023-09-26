@@ -37,12 +37,16 @@
 
 // ========== WIFI ==========
 #define WIFI_CONNECT_TIMEOUT     2000
-
-const String serverIP = "192.168.2.13";
-const String serverPort = "5000";
+#define HTTP_REQUEST_TIMEOUT     (100)
 
 // ========== VOICEMEETER ==========
 #define VM_DB_MIN               (-60.0)
 #define VM_DB_MAX               (12.0)
+
+// ========== SLEEP ==========
+#define uS_TO_S_FACTOR          1000000
+#define S_TO_M_FACTOR           60
+#define SLEEP_TIME              5
+#define SLEEP_TIME_uS           (SLEEP_TIME * S_TO_M_FACTOR * uS_TO_S_FACTOR)
 
 #endif

@@ -14,10 +14,10 @@ private:
     static uint8_t hardwareId;
 
 public:
-    bool init(const uint8_t* sPins, const uint8_t* bPins, const uint8_t* lPins, const uint8_t nb);
-    bool update();
-    bool apply(String body);
-    bool getCurrentURI(String *uri);
+    uint16_t init(const uint8_t* sPins, const uint8_t* bPins, const uint8_t* lPins, const uint8_t nb);
+    uint16_t update();
+    uint16_t apply(String body);
+    uint16_t getCurrentURI(String *uri);
 };
 
 #endif

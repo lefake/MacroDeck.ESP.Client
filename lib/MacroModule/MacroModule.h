@@ -19,11 +19,11 @@ private:
 
     void buttonPressCb(uint8_t id);
 public:
-    bool init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb);
-    bool init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb);
-    bool update();
-    bool apply();
-    bool getCurrentURI(String* uri);
+    uint16_t init(const uint8_t* sPins, const uint8_t iPin, const uint32_t nb);
+    uint16_t init(const uint8_t* sPins, const uint8_t iPin, const uint8_t ePin, const uint32_t nb);
+    uint16_t update();
+    uint16_t apply();
+    uint16_t getCurrentURI(String* uri);
 };
 
 #endif

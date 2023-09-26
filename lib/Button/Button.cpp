@@ -1,11 +1,11 @@
 #include "Button.h"
 
-bool Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
+uint16_t Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
 {
     return init(hId, pinId, INPUT_PULLUP, BTN_ACTIVE, cb);
 }
 
-bool Button::init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool active,ButtonCallback cb)
+uint16_t Button::init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool active,ButtonCallback cb)
 {
     hardwareId = hId;
     pin = pinId;
@@ -19,13 +19,13 @@ bool Button::init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool act
 
     pinMode(pin, mode);
 
-    return true;
+    return OK;
 }
 
-bool Button::update()
+uint16_t Button::update()
 {
     if (!isTimeToUpdate())
-        return true;
+        return NO_BUTTON_UPDATE_READY;
 
     int readState = digitalRead(pin);
 
@@ -44,7 +44,7 @@ bool Button::update()
     }
 
     lastState = readState;
-    return true;
+    return OK;
 }
 
 bool Button::getState()
