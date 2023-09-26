@@ -6,7 +6,7 @@
 #include "Constants.h"
 #include "config.h"
 #include "pins.h"
-#include "errorCode.h"
+#include "ErrorCode.h"
 
 #include "ClientHttp.h"
 #include "StripModule.h"
