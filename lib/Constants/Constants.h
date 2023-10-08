@@ -6,14 +6,14 @@
 #define DEBUG_STACK
 
 // ========== BUTTONS ==========
-#define DEBOUNCE_DELAY          50
+#define DEBOUNCE_DELAY          25
 #define BTN_ACTIVE              LOW
 
 // ========== SLIDERS ==========
-#define ROLLING_LENGTH          50
-#define CHANGE_THRES            (0.5)
+#define ROLLING_LENGTH          25
+#define CHANGE_THRES            (0.05)
 
-#define ANALOG_LOW_THRESOLD     100
+#define ANALOG_LOW_THRESOLD     0
 #define ANALOG_HIGH_THRESOLD    4095
 
 // ========== LEDS ==========
@@ -25,12 +25,11 @@
 #define SWITCH_TIME             1
 
 // ========== MODULES ==========
-
 #define NB_HARDWARE_STRIPS      5
-#define NB_HARDWARE_MACRO       8
+#define NB_HARDWARE_MACRO       5
 
 // ========== THREAD ==========
-#define HARDWARE_POLLING_RATE   10
+#define HARDWARE_POLLING_RATE   5
 #define VM_POLLING_RATE         200
 #define VM_PUSHING_RATE         100
 #define ERROR_HANDLING_RATE     500

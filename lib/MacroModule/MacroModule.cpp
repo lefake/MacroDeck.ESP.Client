@@ -30,14 +30,17 @@ uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8
 
 uint16_t MacroModule::update()
 {
-    uint16_t ret = mux.select(0);
+    uint16_t ret = OK;
 
     for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
     {
-        mux.enable();
-        ret = buttons[i].update();
+        ret = mux.select(i);
+
         if (ret == OK)
-            ret = mux.next();
+        {
+            mux.enable();
+            ret = buttons[i].update();
+        }
     }
 
     return ret;

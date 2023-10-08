@@ -157,15 +157,17 @@ void pushVMTask(void * parameter)
         if (ret == OK)
             ret = client.httpPOSTRequest(pushURI, "");
 
-        if (ret == OK)
-            ret = macros.getCurrentURI(&pushURI);
+        if (GET_SEVERITY(ret) != SUCCESS)
+            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+
+        ret = macros.getCurrentURI(&pushURI);
 
         if (ret == OK)
             ret = client.httpPOSTRequest(pushURI, "");
 
-
         if (GET_SEVERITY(ret) != SUCCESS)
             xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+
         vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
