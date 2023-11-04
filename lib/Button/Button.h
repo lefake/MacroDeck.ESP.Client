@@ -25,7 +25,6 @@ private:
 
 public:
     uint16_t init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb);
-    uint16_t init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool active, ButtonCallback cb);
     uint16_t update();
     bool getState();
 };

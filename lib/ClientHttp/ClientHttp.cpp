@@ -20,8 +20,6 @@ uint16_t ClientHttp::httpGETRequest(String uri, String* response)
     client.stop();
     http.end();
 
-    //Serial.println(code);
-
     if (code == 200)
         return OK;
     else if (code == HTTPC_ERROR_READ_TIMEOUT)

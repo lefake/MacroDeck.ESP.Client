@@ -2,14 +2,9 @@
 
 uint16_t Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
 {
-    return init(hId, pinId, INPUT_PULLUP, BTN_ACTIVE, cb);
-}
-
-uint16_t Button::init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool active,ButtonCallback cb)
-{
     hardwareId = hId;
     pin = pinId;
-    activeState = active;
+    activeState = BTN_ACTIVE;
     callback = cb;
 
     currentState = BTN_ACTIVE;
@@ -17,7 +12,7 @@ uint16_t Button::init(const uint8_t hId, const uint8_t pinId, uint8_t mode, bool
     lastDebounceTime = 0;
     lastUpdateTime = 0;
 
-    pinMode(pin, mode);
+    pinMode(pin, INPUT_PULLUP);
 
     return OK;
 }

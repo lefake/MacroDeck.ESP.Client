@@ -21,7 +21,7 @@ uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8
     {
         for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
         {
-            ret = buttons[i].init(hardwareId++, iPin, INPUT_PULLDOWN, HIGH, [this](uint8_t id) { buttonPressCb(id); });
+            ret = buttons[i].init(hardwareId++, iPin, [this](uint8_t id) { buttonPressCb(id); });
         }
     }
 
