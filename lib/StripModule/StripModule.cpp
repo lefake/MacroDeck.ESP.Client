@@ -23,51 +23,48 @@ uint16_t StripModule::update()
     return ret;
 }
 
-uint16_t StripModule::apply(String body)
+uint16_t StripModule::apply(double gains[], uint8_t mutes)
 {
     uint16_t ret = OK;
-    uint8_t mute = body.toInt();
 
-    for (uint8_t i = 0; i < nbStrips && GET_SEVERITY(ret) == SUCCESS; ++i)
+    for (uint8_t i = 0; i < NB_HARDWARE_STRIPS && GET_SEVERITY(ret) == SUCCESS; ++i)
     {
-        ret = strips[i].apply(0, mute & 0b1);
-        mute = mute >> 1;
+        ret = strips[i].apply(gains[i], mutes & 0b1);
+        mutes = mutes >> 1;
     }
 
     return ret;
 }
 
-uint16_t StripModule::getCurrentURI(String* uri)
+uint16_t StripModule::getMutes(uint8_t *mutes)
 {
-    uint16_t ret = NO_STRIP_MODULE_UPDATE;
-    *uri = "/push?";
-
-    double gains[nbStrips] = { 0 };
-    uint8_t mute = 0;
-    bool tempMute;
+    uint16_t ret = NO_MUTE_UPDATE;
+    bool mute;
+    *mutes = 0;
 
     for (uint8_t i = 0; i < nbStrips; ++i)
     {
-        if (strips[i].getState(&gains[i], &tempMute) == OK)
+        if (strips[i].getMuteState(&mute) == OK)
         {
-            if (ret == NO_STRIP_MODULE_UPDATE)
-                *uri += "g=";
-                
-            *uri += String(strips[i].getHardwareId()) + ':' + (gains[i]) + ',';
+            *mutes |= mute << i;
             ret = OK;
         }
-
-        mute |= tempMute << i;
     }
 
-    if (GET_SEVERITY(ret) == SUCCESS)
-    {
-        if (mute != 0)
-        {
-            if (ret == OK)
-                *uri += "&";
+    return ret;
+}
 
-            *uri += "m=" + String(mute);
+uint16_t StripModule::getGains(double gains[])
+{
+    uint16_t ret = NO_SLIDER_UPDATE;
+    double gain;
+
+    for (uint8_t i = 0; i < nbStrips; ++i)
+    {
+        gains[i] = GAIN_VALUE_NOT_UPDATED;
+        if (strips[i].getGainState(&gain) == OK)
+        {
+            gains[i] = gain;
             ret = OK;
         }
     }

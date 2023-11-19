@@ -51,24 +51,22 @@ uint16_t MacroModule::apply()
     return OK;
 }
 
-uint16_t MacroModule::getCurrentURI(String* uri)
+uint16_t MacroModule::getMacros(uint8_t* macros)
 {
-    *uri = "/pushMacro?m=";
+    uint16_t ret = NO_MACRO_UPDATE;
+    *macros = 0;
 
-    uint32_t macro = 0;
-
-    for (uint8_t i = 0; i < nbButtons; ++i)
+     for (uint8_t i = 0; i < nbButtons; ++i)
     {
         if (buttonStates[i])
         {
-            macro |= buttonStates[i] << i;
+            *macros |= buttonStates[i] << i;
             buttonStates[i] = false;
+            ret = OK;
         }
     }
 
-    *uri += String(macro);
-
-    return macro != 0 ? OK : NO_MACRO_UPDATE;
+    return ret;
 }
 
 void MacroModule::buttonPressCb(uint8_t id)

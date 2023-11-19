@@ -34,15 +34,22 @@ uint16_t Strip::apply(double gain, bool mute)
     return muteLed.apply(mute);
 }
 
-uint16_t Strip::getState(double *gain, bool *mute)
+uint16_t Strip::getGainState(double *gain)
 {
-    uint16_t gainUpdated = slider.getCurrent(gain);
+    return slider.getCurrent(gain);
+}
+
+uint16_t Strip::getMuteState(bool *mute)
+{
     *mute = buttonTrigged;
 
     if (buttonTrigged)
+    {
         buttonTrigged = false;
+        return OK;
+    }
 
-    return gainUpdated;
+    return NO_MUTE_UPDATE;
 }
 
 uint8_t Strip::getHardwareId()

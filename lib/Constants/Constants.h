@@ -11,7 +11,7 @@
 
 // ========== SLIDERS ==========
 #define ROLLING_LENGTH          25
-#define CHANGE_THRES            (0.05)
+#define CHANGE_THRES            (0.1)
 
 #define ANALOG_LOW_THRESOLD     0
 #define ANALOG_HIGH_THRESOLD    4095
@@ -28,15 +28,19 @@
 #define NB_HARDWARE_STRIPS      5
 #define NB_HARDWARE_MACRO       5
 
+#define GAIN_VALUE_NOT_UPDATED  (-100)
+
 // ========== THREAD ==========
+#define NB_TASKS                5
 #define HARDWARE_POLLING_RATE   5
-#define VM_POLLING_RATE         200
+#define MQTT_POLLING_RATE       10
 #define VM_PUSHING_RATE         100
+#define MACRO_PUSHING_RATE      250
 #define ERROR_HANDLING_RATE     500
 
 // ========== WIFI ==========
 #define WIFI_CONNECT_TIMEOUT     2000
-#define HTTP_REQUEST_TIMEOUT     (100)
+#define MQTT_CONNECT_TIMEOUT     100
 
 // ========== VOICEMEETER ==========
 #define VM_DB_MIN               (-60.0)

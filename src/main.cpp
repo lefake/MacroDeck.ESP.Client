@@ -1,53 +1,56 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <ArduinoOTA.h>
-#include <HTTPClient.h>
 
 #include "Constants.h"
 #include "config.h"
 #include "pins.h"
 #include "ErrorCode.h"
 
-#include "ClientHttp.h"
+#include "ClientMQTT.h"
 #include "StripModule.h"
 #include "MacroModule.h"
 
 // Modules
-static StripModule strips;
-static MacroModule macros;
+static StripModule stripModule;
+static MacroModule macroModule;
 static Led statusLed;
 
-// HTTP Client
-static ClientHttp client(serverIP, serverPort);
+// MQTT
+static ClientMQTT client;
+const char* subscribe_topics[] = {"macrodeck/vm",};
+const char* gains_topic = "macrodeck/gains";
+const char* mutes_topic = "macrodeck/mutes";
+const char* macro_topic = "macrodeck/macros";
 
-static String pullBody;
-static String pushURI;
+// Vars
 static uint16_t fatalError = OK;
-
-static int stackMin1 = 5000;
-static int stackMin2 = 5000;
-static int stackMin3 = 5000;
-static int stackMin4 = 5000;
-
-static TaskHandle_t pollHardwaregHandle;
-static TaskHandle_t pollVMHandle;
-static TaskHandle_t pushVMHandle;
-static TaskHandle_t errorHandlingHandle;
-
-static bool pollHardwareRun = true;
-static bool pollVMRun = true;
-static bool pushVMRun = true;
+static double stripGains[NB_HARDWARE_STRIPS];
+static uint8_t stripMutes;
+static uint8_t macros;
+static String in_msg;
+static double in_gains[NB_HARDWARE_STRIPS];
 
 // ========== Functions ==========
 static uint16_t connectWifi();
 static void setupOTA();
 static void errorNotify(uint16_t code);
 
+static void mqtt_in(char* topic, byte* payload, unsigned int length);
+
 // ===== Tasks =====
 static void pollHardwareTask(void * parameter);
-static void pollVMTask(void * parameter);
+static void pollMqttTask(void * parameter);
 static void pushVMTask(void * parameter);
+static void pushMacro(void * parameter);
 static void errorHandlingTask(void * parameter);
+
+static TaskFunction_t taskFct[NB_TASKS] = { pollHardwareTask, pollMqttTask, pushVMTask, pushMacro, errorHandlingTask };
+static char* taskNames[NB_TASKS] = { "A", "B", "C", "D", "E" };
+static int stacks[NB_TASKS] = { 5000, 5000, 5000, 5000, 5000 };
+static int taskPriorities[NB_TASKS] = { 1, 1, 2, 2, 1 };
+static TaskHandle_t taskHandles[NB_TASKS];
+static bool taskRun[NB_TASKS] = { true, true, true, true, true };
 
 void setup()
 {
@@ -55,8 +58,8 @@ void setup()
     esp_sleep_enable_timer_wakeup(SLEEP_TIME_uS);
 
     uint16_t ret = statusLed.init(statusLedPin);
-    ret |= strips.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
-    ret |= macros.init(muxSelectPins, muxInputPin, NB_HARDWARE_MACRO);
+    ret |= stripModule.init(sliderPins, muteButtonPins, muteLedPins, NB_HARDWARE_STRIPS);
+    ret |= macroModule.init(muxSelectPins, muxInputPin, NB_HARDWARE_MACRO);
 
     if (GET_SEVERITY(ret) == SUCCESS)
     {
@@ -64,10 +67,17 @@ void setup()
         if (ret == OK)
         {
             setupOTA();
-            // Start threads
-            xTaskCreate(pollHardwareTask, "Poll Hardware", 2000, NULL, 1, &pollHardwaregHandle);
-            xTaskCreate(pollVMTask, "Poll VM", 2500, NULL, 1, &pollVMHandle);
-            xTaskCreate(pushVMTask, "Push VM", 2500, NULL, 1, &pushVMHandle);
+
+            ret = client.init(mqtt_broker, mqtt_port, subscribe_topics, 1, mqtt_in);
+            
+            if (ret == OK)
+            {
+                Serial.println("Starting");
+                for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
+                    xTaskCreate(taskFct[i], taskNames[i], stacks[i], NULL, taskPriorities[i], &taskHandles[i]);
+            }
+            else
+                fatalError = MQTT_INIT_FAILED;
         }
         else
             fatalError = WIFI_NOT_CONNECTED;
@@ -75,7 +85,7 @@ void setup()
     else
         fatalError = INIT_FAILED;
 
-    xTaskCreate(errorHandlingTask, "Error Handling", 2000, NULL, 2, &errorHandlingHandle);
+    xTaskCreate(taskFct[3], taskNames[3], stacks[3], NULL, 1, &taskHandles[3]);
 }
 
 void loop()
@@ -87,88 +97,101 @@ void loop()
 
 void pollHardwareTask(void * parameter)
 {
+    uint8_t task_id = 0;
     uint16_t ret;
-    while(pollHardwareRun)
+    while(taskRun[task_id])
     {
 #ifdef DEBUG_STACK
         int reste = uxTaskGetStackHighWaterMark(NULL);
 
-        if (reste < stackMin1)
+        if (reste < stacks[task_id])
         {
-            stackMin1 = reste;
-            Serial.printf("pollHardwareTask %i\n", stackMin1);
+            stacks[task_id] = reste;
+            Serial.printf("pollHardwareTask %i\n", stacks[task_id]);
         }
 #endif
-        ret = strips.update();
+        ret = stripModule.update();
         if (GET_SEVERITY(ret) == SUCCESS)
-            ret = macros.update();
+            ret = macroModule.update();
 
         if (GET_SEVERITY(ret) != SUCCESS)
-            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+            xTaskNotify(taskHandles[3], ret, eSetValueWithOverwrite);
         vTaskDelay(HARDWARE_POLLING_RATE / portTICK_PERIOD_MS);
-    }
-    vTaskDelete(NULL);
-}
-
-void pollVMTask(void * parameter)
-{
-    uint16_t ret;
-    while(pollVMRun)
-    {
-#ifdef DEBUG_STACK
-        int reste = uxTaskGetStackHighWaterMark(NULL);
-
-        if (reste < stackMin2)
-        {
-        stackMin2 = reste;
-        Serial.printf("pollVMTask %i\n", stackMin2);
-        }
-#endif
-        ret = client.httpGETRequest("/pull", &pullBody);
-
-        if (GET_SEVERITY(ret) == SUCCESS)
-            if (pullBody.length() > 0)
-                ret = strips.apply(pullBody);
-
-        if (GET_SEVERITY(ret) != SUCCESS)
-            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
-        vTaskDelay(VM_POLLING_RATE / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
 
 void pushVMTask(void * parameter)
 {
-    uint16_t ret;
-    while(pushVMRun)
+    uint8_t task_id = 2;
+    
+    while(taskRun[task_id])
     {
 #ifdef DEBUG_STACK
         int reste = uxTaskGetStackHighWaterMark(NULL);
 
-        if (reste < stackMin3)
+        if (reste < stacks[task_id])
         {
-            stackMin3 = reste;
-            Serial.printf("pushVMTask %i\n", stackMin3);
+            stacks[task_id] = reste;
+            Serial.printf("pushVMTask %i\n", stacks[task_id]);
         }
 #endif
+        if (stripModule.getGains(stripGains) == OK)
+        {
+            for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
+            {
+                if (stripGains[i] != GAIN_VALUE_NOT_UPDATED)
+                    client.pub(gains_topic, (String(i) + ":" + String(stripGains[i])).c_str());
+            }
+        }
 
-        ret = strips.getCurrentURI(&pushURI);
-
-        if (ret == OK)
-            ret = client.httpPOSTRequest(pushURI, "");
-
-        if (GET_SEVERITY(ret) != SUCCESS)
-            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
-
-        ret = macros.getCurrentURI(&pushURI);
-
-        if (ret == OK)
-            ret = client.httpPOSTRequest(pushURI, "");
-
-        if (GET_SEVERITY(ret) != SUCCESS)
-            xTaskNotify(errorHandlingHandle, ret, eSetValueWithOverwrite);
+        if (stripModule.getMutes(&stripMutes) == OK)
+            client.pub(mutes_topic, String(stripMutes).c_str());
 
         vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
+    }
+    vTaskDelete(NULL);
+}
+
+void pollMqttTask(void * parameter)
+{
+    uint8_t task_id = 1;
+    uint16_t ret;
+    while(taskRun[task_id])
+    {
+#ifdef DEBUG_STACK
+        int reste = uxTaskGetStackHighWaterMark(NULL);
+
+        if (reste < stacks[task_id])
+        {
+            stacks[task_id] = reste;
+            Serial.printf("pollMqttTask %i\n", stacks[task_id]);
+        }
+#endif
+        client.loop();
+        vTaskDelay(MQTT_POLLING_RATE / portTICK_PERIOD_MS);
+    }
+}
+
+void pushMacro(void * parameter)
+{
+    uint8_t task_id = 3;
+    
+    while(taskRun[task_id])
+    {
+#ifdef DEBUG_STACK
+        int reste = uxTaskGetStackHighWaterMark(NULL);
+
+        if (reste < stacks[task_id])
+        {
+            stacks[task_id] = reste;
+            Serial.printf("pushMacro %i\n", stacks[task_id]);
+        }
+#endif
+        if (macroModule.getMacros(&macros) == OK)
+            client.pub(macro_topic, String(macros).c_str());
+
+        vTaskDelay(MACRO_PUSHING_RATE / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
 }
@@ -179,16 +202,17 @@ void errorHandlingTask(void * parameter)
     uint16_t errorCode;
     uint16_t severity;
     uint16_t code;
+    uint8_t task_id = 4;
 
     for(;;)
     {
 #ifdef DEBUG_STACK
         int reste = uxTaskGetStackHighWaterMark(NULL);
 
-        if (reste < stackMin4)
+        if (reste < stacks[task_id])
         {
-            stackMin4 = reste;
-            Serial.printf("errorHandlingTask %i\n", stackMin4);
+            stacks[task_id] = reste;
+            Serial.printf("errorHandlingTask %i\n", stacks[task_id]);
         }
 #endif
         if (fatalError != OK)
@@ -203,7 +227,7 @@ void errorHandlingTask(void * parameter)
             severity = GET_SEVERITY(errorCode);
             code = GET_CODE(errorCode);
 
-            //Serial.printf("%i, %i\n", severity, code);
+            Serial.println(errorCode);
 
             switch (severity)
             {
@@ -215,17 +239,18 @@ void errorHandlingTask(void * parameter)
                 errorNotify(code);
                 if (errorCode == HTTP_REFUSED)
                 {
-                    vTaskSuspend(pollHardwaregHandle);
-                    vTaskSuspend(pollVMHandle);
-                    vTaskSuspend(pushVMHandle);
+                    for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
+                        vTaskSuspend(taskHandles[i]);
+
+                    client.disconnect();
                     esp_deep_sleep_start();
                 }
                 break;
             case FATAL:
             default:
-                pollHardwareRun = false;
-                pollVMRun = false;
-                pushVMRun = false;
+                for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
+                    taskRun[i] = false;
+
                 fatalError = errorCode;
                 break;
             }
@@ -234,6 +259,19 @@ void errorHandlingTask(void * parameter)
 }
 
 // ==================== Private ====================
+
+void mqtt_in(char* topic, byte* payload, unsigned int length)
+{
+    if (strcmp(topic, subscribe_topics[0]) == 0)
+    {
+        in_msg = "";
+        for (int i = 0; i < length; i++) 
+            in_msg += (char) payload[i];
+
+        stripModule.apply(in_gains, in_msg.toInt());
+    }
+}
+
 uint16_t connectWifi()
 {
     IPAddress staticIP(ST_IP);
