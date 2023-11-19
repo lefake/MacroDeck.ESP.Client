@@ -21,7 +21,8 @@ public:
     uint16_t init(uint8_t hId, const uint8_t sPin, const uint8_t bPin, const uint8_t lPin);
     uint16_t update();
     uint16_t apply(double gain, bool mute);
-    uint16_t getState(double *gain, bool *mute);
+    uint16_t getGainState(double *gain);
+    uint16_t getMuteState(bool *mute);
     uint8_t getHardwareId();
 };
 

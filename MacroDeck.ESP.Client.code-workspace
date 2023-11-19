@@ -20,7 +20,8 @@
 			"unordered_map": "cpp",
 			"fstream": "cpp",
 			"sstream": "cpp",
-			"random": "cpp"
+			"random": "cpp",
+			"streambuf": "cpp"
 		}
 	}
 }
