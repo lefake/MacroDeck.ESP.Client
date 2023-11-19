@@ -28,6 +28,8 @@ static uint16_t fatalError = OK;
 static double stripGains[NB_HARDWARE_STRIPS];
 static uint8_t stripMutes;
 static uint8_t macros;
+static String in_msg;
+static double in_gains[NB_HARDWARE_STRIPS];
 
 // ========== Functions ==========
 static uint16_t connectWifi();
@@ -260,13 +262,14 @@ void errorHandlingTask(void * parameter)
 
 void mqtt_in(char* topic, byte* payload, unsigned int length)
 {
-    Serial.print("Message received on topic: ");
-    Serial.print(topic);
-    Serial.print(". Message: ");
-    for (int i = 0; i < length; i++) {
-        Serial.print((char)payload[i]);
+    if (strcmp(topic, subscribe_topics[0]) == 0)
+    {
+        in_msg = "";
+        for (int i = 0; i < length; i++) 
+            in_msg += (char) payload[i];
+
+        stripModule.apply(in_gains, in_msg.toInt());
     }
-    Serial.println();
 }
 
 uint16_t connectWifi()
