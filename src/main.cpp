@@ -85,7 +85,7 @@ void setup()
     else
         fatalError = INIT_FAILED;
 
-    xTaskCreate(taskFct[3], taskNames[3], stacks[3], NULL, 1, &taskHandles[3]);
+    xTaskCreate(taskFct[4], taskNames[4], stacks[4], NULL, 1, &taskHandles[4]);
 }
 
 void loop()
