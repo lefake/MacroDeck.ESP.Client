@@ -11,6 +11,7 @@ uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8
 {
     uint16_t ret;
     nbButtons = nb;
+    currentId = 0;
 
     if (ePin == 255)
         ret = mux.init(sPins, nb);
@@ -19,9 +20,11 @@ uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8
 
     if (ret == OK)
     {
+        pinMode(iPin, INPUT);
+
         for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
         {
-            ret = buttons[i].init(hardwareId++, iPin, [this](uint8_t id) { buttonPressCb(id); });
+            ret = buttons[i].init(hardwareId++, iPin, [this](uint8_t id) { buttonPressCb(id); }, 0);
         }
     }
 
@@ -30,19 +33,16 @@ uint16_t MacroModule::init(const uint8_t* sPins, const uint8_t iPin, const uint8
 
 uint16_t MacroModule::update()
 {
-    uint16_t ret = OK;
+    uint16_t ret = mux.select(currentId);
 
-    for (uint8_t i = 0; i < nbButtons && ret == OK; ++i)
+    if (ret == OK)
     {
-        ret = mux.select(i);
-
-        if (ret == OK)
-        {
-            mux.enable();
-            ret = buttons[i].update();
-        }
+        mux.enable();
+        ret = buttons[currentId].update();
     }
 
+    currentId = (currentId + 1) % nbButtons;
+    
     return ret;
 }
 
@@ -56,7 +56,7 @@ uint16_t MacroModule::getMacros(uint8_t* macros)
     uint16_t ret = NO_MACRO_UPDATE;
     *macros = 0;
 
-     for (uint8_t i = 0; i < nbButtons; ++i)
+    for (uint8_t i = 0; i < nbButtons; ++i)
     {
         if (buttonStates[i])
         {

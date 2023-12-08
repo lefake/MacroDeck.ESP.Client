@@ -16,6 +16,7 @@ private:
     uint8_t inputPin;
     uint8_t nbButtons;
     static uint8_t hardwareId;
+    uint8_t currentId; 
 
     void buttonPressCb(uint8_t id);
 public:

@@ -7,7 +7,7 @@
 
 // ========== BUTTONS ==========
 #define DEBOUNCE_DELAY          25
-#define BTN_ACTIVE              LOW
+#define BTN_ACTIVE              HIGH
 
 // ========== SLIDERS ==========
 #define ROLLING_LENGTH          25
@@ -22,11 +22,11 @@
 #define MUX_EXP                 3
 #define MUX_DISABLE             HIGH
 #define MUX_ENABLE              LOW
-#define SWITCH_TIME             1
+#define SWITCH_TIME             3
 
 // ========== MODULES ==========
 #define NB_HARDWARE_STRIPS      5
-#define NB_HARDWARE_MACRO       5
+#define NB_HARDWARE_MACRO       6
 
 #define GAIN_VALUE_NOT_UPDATED  (-100)
 
@@ -39,7 +39,7 @@
 #define ERROR_HANDLING_RATE     500
 
 // ========== WIFI ==========
-#define WIFI_CONNECT_TIMEOUT     2000
+#define WIFI_CONNECT_TIMEOUT     5000
 #define MQTT_CONNECT_TIMEOUT     100
 
 // ========== VOICEMEETER ==========

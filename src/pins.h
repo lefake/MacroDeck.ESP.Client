@@ -5,8 +5,8 @@
 #include "Constants.h"
 
 // ========== Strip Module ==========
-static const uint8_t sliderPins[] = { 33, 34, 35, 36, 39 };
-static const uint8_t muteButtonPins[] = { 23, 25, 26, 27, 32 };
+static const uint8_t sliderPins[] = { 36, 39, 34, 35, 33 };
+static const uint8_t muteButtonPins[] = { 23, 32, 25, 26, 27 };
 static const uint8_t muteLedPins[] = { 17, 18, 19, 21, 22 };
 
 // ========== Macro Module ==========

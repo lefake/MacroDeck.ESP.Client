@@ -24,7 +24,7 @@ private:
     bool isTimeToUpdate();
 
 public:
-    uint16_t init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb);
+    uint16_t init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb, bool initPin = 1);
     uint16_t update();
     bool getState();
 };

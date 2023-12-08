@@ -1,6 +1,6 @@
 #include "Button.h"
 
-uint16_t Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
+uint16_t Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb, bool initPin)
 {
     hardwareId = hId;
     pin = pinId;
@@ -12,7 +12,8 @@ uint16_t Button::init(const uint8_t hId, const uint8_t pinId, ButtonCallback cb)
     lastDebounceTime = 0;
     lastUpdateTime = 0;
 
-    pinMode(pin, INPUT_PULLUP);
+    if (initPin)
+        pinMode(pin, INPUT_PULLDOWN);
 
     return OK;
 }
