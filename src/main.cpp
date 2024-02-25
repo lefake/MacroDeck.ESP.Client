@@ -18,7 +18,7 @@ static Led statusLed;
 
 // MQTT
 static ClientMQTT client;
-const char* subscribe_topics[] = {"macrodeck/vm",};
+const char* subscribe_topics[NB_SUB_TOPICS] = {"macrodeck/vm", "macrodeck/hb"};
 const char* gains_topic = "macrodeck/gains";
 const char* mutes_topic = "macrodeck/mutes";
 const char* macro_topic = "macrodeck/macros";
@@ -30,11 +30,13 @@ static uint8_t stripMutes;
 static uint8_t macros;
 static String in_msg;
 static double in_gains[NB_HARDWARE_STRIPS];
+static unsigned long last_hb_time;
 
 // ========== Functions ==========
 static uint16_t connectWifi();
 static void setupOTA();
 static void errorNotify(uint16_t code);
+static void shutdown();
 
 static void mqtt_in(char* topic, byte* payload, unsigned int length);
 
@@ -46,8 +48,8 @@ static void pushMacro(void * parameter);
 static void errorHandlingTask(void * parameter);
 
 static TaskFunction_t taskFct[NB_TASKS] = { pollHardwareTask, pollMqttTask, pushVMTask, pushMacro, errorHandlingTask };
-static char* taskNames[NB_TASKS] = { "A", "B", "C", "D", "E" };
-static int stacks[NB_TASKS] = { 5000, 5000, 5000, 5000, 5000 };
+static char* taskNames[NB_TASKS] = { "Harware", "MQTT", "Slider", "Macro", "Errors" };
+static int stacks[NB_TASKS] = { 6000, 6000, 6000, 6000, 6000 };
 static int taskPriorities[NB_TASKS] = { 1, 1, 2, 2, 1 };
 static TaskHandle_t taskHandles[NB_TASKS];
 static bool taskRun[NB_TASKS] = { true, true, true, true, true };
@@ -68,7 +70,7 @@ void setup()
         {
             setupOTA();
 
-            ret = client.init(mqtt_broker, mqtt_port, subscribe_topics, 1, mqtt_in);
+            ret = client.init(mqtt_broker, mqtt_port, subscribe_topics, NB_SUB_TOPICS, mqtt_in);
             
             if (ret == OK)
             {
@@ -86,11 +88,14 @@ void setup()
         fatalError = INIT_FAILED;
 
     xTaskCreate(taskFct[4], taskNames[4], stacks[4], NULL, 1, &taskHandles[4]);
+    last_hb_time = millis();
 }
 
 void loop()
 {
     ArduinoOTA.handle();
+    if (millis() - last_hb_time > TIME_BEFORE_SLEEP_MS)
+        shutdown();
 }
 
 // ==================== Tasks ====================
@@ -115,7 +120,7 @@ void pollHardwareTask(void * parameter)
             ret = macroModule.update();
 
         if (GET_SEVERITY(ret) != SUCCESS)
-            xTaskNotify(taskHandles[3], ret, eSetValueWithOverwrite);
+            xTaskNotify(taskHandles[4], ret, eSetValueWithOverwrite);
         vTaskDelay(HARDWARE_POLLING_RATE / portTICK_PERIOD_MS);
     }
     vTaskDelete(NULL);
@@ -237,14 +242,6 @@ void errorHandlingTask(void * parameter)
                 break;
             case ERROR:
                 errorNotify(code);
-                if (errorCode == HTTP_REFUSED)
-                {
-                    for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
-                        vTaskSuspend(taskHandles[i]);
-
-                    client.disconnect();
-                    esp_deep_sleep_start();
-                }
                 break;
             case FATAL:
             default:
@@ -269,6 +266,14 @@ void mqtt_in(char* topic, byte* payload, unsigned int length)
             in_msg += (char) payload[i];
 
         stripModule.apply(in_gains, in_msg.toInt());
+    }
+    else if (strcmp(topic, subscribe_topics[1]) == 0)
+    {
+        last_hb_time = millis();
+    }
+    else
+    {
+        xTaskNotify(taskHandles[4], INVALID_MQTT_TOPIC, eSetValueWithOverwrite);
     }
 }
 
@@ -315,4 +320,16 @@ void errorNotify(uint16_t code)
     vTaskDelay(time / portTICK_PERIOD_MS);
     statusLed.apply(LOW);
     vTaskDelay(time / portTICK_PERIOD_MS);
+}
+
+void shutdown()
+{
+    Serial.println("Shutting down! DODO");
+    Serial.println(millis());
+    Serial.println(last_hb_time);
+    for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
+        vTaskSuspend(taskHandles[i]);
+
+    client.disconnect();
+    esp_deep_sleep_start();
 }

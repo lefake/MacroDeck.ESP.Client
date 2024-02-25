@@ -2,7 +2,7 @@
 #define CONSTANTS_H_
 
 // ========== DEBUG ==========
-#define DEBUG
+// #define DEBUG
 #define DEBUG_STACK
 
 // ========== BUTTONS ==========
@@ -12,6 +12,7 @@
 // ========== SLIDERS ==========
 #define ROLLING_LENGTH          25
 #define CHANGE_THRES            (0.1)
+#define DIR_MULTIPLIER          -1
 
 #define ANALOG_LOW_THRESOLD     0
 #define ANALOG_HIGH_THRESOLD    4095
@@ -43,13 +44,17 @@
 #define MQTT_CONNECT_TIMEOUT     100
 
 // ========== VOICEMEETER ==========
-#define VM_DB_MIN               (-60.0)
-#define VM_DB_MAX               (12.0)
+#define VM_DB_MIN               (12.0)
+#define VM_DB_MAX               (-60.0)
+
+// ========== MQTT ==========
+#define NB_SUB_TOPICS           2
 
 // ========== SLEEP ==========
 #define uS_TO_S_FACTOR          1000000
 #define S_TO_M_FACTOR           60
 #define SLEEP_TIME              5
 #define SLEEP_TIME_uS           (SLEEP_TIME * S_TO_M_FACTOR * uS_TO_S_FACTOR)
+#define TIME_BEFORE_SLEEP_MS    10000
 
 #endif
