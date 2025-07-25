@@ -23,20 +23,16 @@ uint16_t StripModule::update()
     return ret;
 }
 
-uint16_t StripModule::apply(double gains[], uint8_t mutes)
+uint16_t StripModule::apply(uint8_t id, double gain, bool mute)
 {
     uint16_t ret = OK;
+    if (id > NB_HARDWARE_STRIPS) return INVALID_STRIP_ID;
 
-    for (uint8_t i = 0; i < NB_HARDWARE_STRIPS && GET_SEVERITY(ret) == SUCCESS; ++i)
-    {
-        ret = strips[i].apply(gains[i], mutes & 0b1);
-        mutes = mutes >> 1;
-    }
-
+    ret = strips[id].apply(gain, mute);
     return ret;
 }
 
-uint16_t StripModule::getMutes(uint8_t *mutes)
+uint16_t StripModule::getMutes(uint8_t mutes[])
 {
     uint16_t ret = NO_MUTE_UPDATE;
     bool mute;
@@ -44,9 +40,10 @@ uint16_t StripModule::getMutes(uint8_t *mutes)
 
     for (uint8_t i = 0; i < nbStrips; ++i)
     {
+        mutes[i] = NO_MUTE_UPDATE;
         if (strips[i].getMuteState(&mute) == OK)
         {
-            *mutes |= mute << i;
+            mutes[i] = mute;
             ret = OK;
         }
     }

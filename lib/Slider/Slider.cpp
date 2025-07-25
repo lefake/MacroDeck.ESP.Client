@@ -32,7 +32,7 @@ uint16_t Slider::update()
 {
     int value = readValue();
     double rawSmoothed = updateRolling(value);
-    currentdB = dBMapping(rawSmoothed);
+    currentdB = pourcentMapping(rawSmoothed);
     return OK;
 }
 
@@ -74,4 +74,15 @@ double Slider::dBMapping(double in)
     double dB = mappedValue * (VM_DB_MAX - VM_DB_MIN) + VM_DB_MIN;
 
     return round(dB * 100.0) / 100.0;
+}
+
+double Slider::pourcentMapping(double in)
+{
+    if (in < ANALOG_LOW_THRESOLD)
+        in = ANALOG_LOW_THRESOLD;
+
+    else if (in > ANALOG_HIGH_THRESOLD)
+        in = ANALOG_HIGH_THRESOLD;
+
+    return map(in, ANALOG_LOW_THRESOLD, ANALOG_HIGH_THRESOLD, 0., 100.);
 }

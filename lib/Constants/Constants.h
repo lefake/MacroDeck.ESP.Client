@@ -2,8 +2,8 @@
 #define CONSTANTS_H_
 
 // ========== DEBUG ==========
-// #define DEBUG
-#define DEBUG_STACK
+#define DEBUG
+// #define DEBUG_STACK
 
 // ========== BUTTONS ==========
 #define DEBOUNCE_DELAY          25
@@ -55,6 +55,6 @@
 #define S_TO_M_FACTOR           60
 #define SLEEP_TIME              5
 #define SLEEP_TIME_uS           (SLEEP_TIME * S_TO_M_FACTOR * uS_TO_S_FACTOR)
-#define TIME_BEFORE_SLEEP_MS    10000
+#define TIME_BEFORE_SLEEP_MS    60000
 
 #endif

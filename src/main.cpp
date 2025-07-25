@@ -26,7 +26,7 @@ const char* macro_topic = "macrodeck/macros";
 // Vars
 static uint16_t fatalError = OK;
 static double stripGains[NB_HARDWARE_STRIPS];
-static uint8_t stripMutes;
+static uint8_t stripMutes[NB_HARDWARE_STRIPS];
 static uint8_t macros;
 static String in_msg;
 static double in_gains[NB_HARDWARE_STRIPS];
@@ -150,8 +150,15 @@ void pushVMTask(void * parameter)
             }
         }
 
-        if (stripModule.getMutes(&stripMutes) == OK)
-            client.pub(mutes_topic, String(stripMutes).c_str());
+        if (stripModule.getMutes(stripMutes) == OK)
+        {
+            for (int i = 0; i < NB_HARDWARE_STRIPS; ++i)
+            {
+                if (stripMutes[i] != NO_MUTE_UPDATE)
+                client.pub(mutes_topic, String(i).c_str());
+            }
+        }
+            
 
         vTaskDelay(VM_PUSHING_RATE / portTICK_PERIOD_MS);
     }
@@ -265,7 +272,22 @@ void mqtt_in(char* topic, byte* payload, unsigned int length)
         for (int i = 0; i < length; i++) 
             in_msg += (char) payload[i];
 
-        stripModule.apply(in_gains, in_msg.toInt());
+        uint8_t id, gain;
+        bool mute;
+
+        int colonPos = in_msg.indexOf(':');
+        int commaPos = in_msg.indexOf(',');
+
+        if (colonPos != -1 && commaPos != -1 && colonPos < commaPos)
+        {
+            id = in_msg.substring(0, colonPos).toInt();
+            gain = in_msg.substring(colonPos + 1, commaPos).toInt();
+            mute = in_msg.substring(commaPos + 1).toInt();
+
+            // Nothing with gains currently
+            stripModule.apply(id, gain, mute);
+        }
+        // TODO : else error
     }
     else if (strcmp(topic, subscribe_topics[1]) == 0)
     {
@@ -282,8 +304,9 @@ uint16_t connectWifi()
     IPAddress staticIP(ST_IP);
     IPAddress gateway(ST_GATEWAY);
     IPAddress subnet(ST_NETMASK);
+    IPAddress dns(ST_DNS);
 
-    WiFi.config(staticIP, gateway, subnet);
+    WiFi.config(staticIP, gateway, subnet, dns);
     WiFi.setHostname(HOST_NAME);
     WiFi.begin(ssid, password);
 

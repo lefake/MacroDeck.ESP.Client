@@ -20,6 +20,7 @@ private:
     uint16_t readValue();
     double updateRolling(double value);
     double dBMapping(double in);
+    double pourcentMapping(double in);
 
 public:
     uint16_t init(const uint8_t pin);

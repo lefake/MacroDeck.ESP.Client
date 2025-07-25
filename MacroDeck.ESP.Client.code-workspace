@@ -21,7 +21,9 @@
 			"fstream": "cpp",
 			"sstream": "cpp",
 			"random": "cpp",
-			"streambuf": "cpp"
+			"streambuf": "cpp",
+			"string": "cpp",
+			"unordered_set": "cpp"
 		}
 	}
 }

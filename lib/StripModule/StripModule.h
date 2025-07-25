@@ -16,8 +16,8 @@ private:
 public:
     uint16_t init(const uint8_t* sPins, const uint8_t* bPins, const uint8_t* lPins, const uint8_t nb);
     uint16_t update();
-    uint16_t apply(double gains[], uint8_t mutes);
-    uint16_t getMutes(uint8_t *mutes);
+    uint16_t apply(uint8_t id, double gain, bool mute);
+    uint16_t getMutes(uint8_t mutes[]);
     uint16_t getGains(double models[]);
 };
 

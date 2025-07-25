@@ -35,5 +35,6 @@
 #define INIT_FAILED                 GEN_ERROR_CODE(FATAL, 5)
 #define MQTT_INIT_FAILED            GEN_ERROR_CODE(FATAL, 6)
 #define INVALID_MQTT_TOPIC          GEN_ERROR_CODE(FATAL, 7)
+#define INVALID_STRIP_ID            GEN_ERROR_CODE(FATAL, 8)
 
 #endif
