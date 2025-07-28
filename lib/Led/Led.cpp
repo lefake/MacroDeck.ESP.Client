@@ -20,4 +20,11 @@ uint16_t Led::apply(const bool state)
     digitalWrite(pin, currentState);
     return OK;
 }
+
+uint16_t Led::toggle()
+{
+    currentState = !currentState;
+    digitalWrite(pin, currentState);
+    return OK;
+}
  

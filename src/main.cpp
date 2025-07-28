@@ -49,8 +49,8 @@ static void errorHandlingTask(void * parameter);
 
 static TaskFunction_t taskFct[NB_TASKS] = { pollHardwareTask, pollMqttTask, pushVMTask, pushMacro, errorHandlingTask };
 static char* taskNames[NB_TASKS] = { "Harware", "MQTT", "Slider", "Macro", "Errors" };
-static int stacks[NB_TASKS] = { 6000, 6000, 6000, 6000, 6000 };
-static int taskPriorities[NB_TASKS] = { 1, 1, 2, 2, 1 };
+static int stacks[NB_TASKS] = { 3000, 2500, 3000, 3000, 1500 };
+static int taskPriorities[NB_TASKS] = { 3, 4, 2, 1, 5 };
 static TaskHandle_t taskHandles[NB_TASKS];
 static bool taskRun[NB_TASKS] = { true, true, true, true, true };
 
@@ -244,9 +244,9 @@ void errorHandlingTask(void * parameter)
             switch (severity)
             {
             case SUCCESS:
-            case WARNING:
                 // Do nothing
                 break;
+            case WARNING:
             case ERROR:
                 errorNotify(code);
                 break;
@@ -266,7 +266,13 @@ void errorHandlingTask(void * parameter)
 
 void mqtt_in(char* topic, byte* payload, unsigned int length)
 {
-    if (strcmp(topic, subscribe_topics[0]) == 0)
+    // HB first
+    if (strcmp(topic, subscribe_topics[1]) == 0)
+    {
+        statusLed.toggle();
+        last_hb_time = millis();
+    }
+    else if (strcmp(topic, subscribe_topics[0]) == 0)
     {
         in_msg = "";
         for (int i = 0; i < length; i++) 
@@ -287,11 +293,10 @@ void mqtt_in(char* topic, byte* payload, unsigned int length)
             // Nothing with gains currently
             stripModule.apply(id, gain, mute);
         }
-        // TODO : else error
-    }
-    else if (strcmp(topic, subscribe_topics[1]) == 0)
-    {
-        last_hb_time = millis();
+        else 
+        {
+            xTaskNotify(taskHandles[4], MQTT_BAD_IN_MSG, eSetValueWithOverwrite);
+        }
     }
     else
     {
@@ -338,18 +343,25 @@ void setupOTA()
 
 void errorNotify(uint16_t code)
 {
-    int time = code * 100;
-    statusLed.apply(HIGH);
-    vTaskDelay(time / portTICK_PERIOD_MS);
-    statusLed.apply(LOW);
-    vTaskDelay(time / portTICK_PERIOD_MS);
+    for (uint8_t i = 0; i < 5; i++)
+        stripModule.apply(i, 0, (code >> i) & 1);
+
+    vTaskDelay(500 / portTICK_PERIOD_MS);
+
+    for (uint8_t i = 0; i < 5; i++)
+        stripModule.apply(i, 0, 0);
 }
 
 void shutdown()
 {
+    statusLed.apply(false);
+
+#ifdef DEBUG
     Serial.println("Shutting down! DODO");
     Serial.println(millis());
     Serial.println(last_hb_time);
+#endif
+
     for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
         vTaskSuspend(taskHandles[i]);
 

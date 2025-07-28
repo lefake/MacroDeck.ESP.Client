@@ -3,7 +3,7 @@
 uint16_t Slider::init(const uint8_t pinId)
 {
   pin = pinId;
-  lastdB = 0;
+  lastMapped = 0;
 
   uint16_t ret = OK;
 
@@ -15,15 +15,15 @@ uint16_t Slider::init(const uint8_t pinId)
 
 uint16_t Slider::getCurrent(double *current)
 {
-  bool ret = abs(lastdB - currentdB) > CHANGE_THRES;
+  bool ret = abs(lastMapped - currentMapped) > CHANGE_THRES;
   
   if (ret)
   {
-    lastdB = currentdB;
-    *current = currentdB;
+    lastMapped = currentMapped;
+    *current = currentMapped;
   }
   else
-    *current = lastdB;
+    *current = lastMapped;
 
   return ret ? OK : NO_SLIDER_UPDATE;
 }
@@ -32,7 +32,8 @@ uint16_t Slider::update()
 {
     int value = readValue();
     double rawSmoothed = updateRolling(value);
-    currentdB = pourcentMapping(rawSmoothed);
+    currentMapped = pourcentMapping(rawSmoothed);
+    
     return OK;
 }
 
@@ -58,17 +59,17 @@ uint16_t Slider::readValue()
   if (value < ANALOG_LOW_THRESOLD)
     value = ANALOG_LOW_THRESOLD;
 
+  if (value > ANALOG_HIGH_THRESOLD)
+    value = ANALOG_HIGH_THRESOLD;
+
+  if (INVERTED_DIRECTION)
+    value = ANALOG_HIGH_THRESOLD - value;
+
   return value;
 }
 
 double Slider::dBMapping(double in)
 {
-    if (in < ANALOG_LOW_THRESOLD)
-        in = ANALOG_LOW_THRESOLD;
-
-    else if (in > ANALOG_HIGH_THRESOLD)
-        in = ANALOG_HIGH_THRESOLD;
-
     double normalized = (in - ANALOG_LOW_THRESOLD) / (ANALOG_HIGH_THRESOLD - ANALOG_LOW_THRESOLD);
     double mappedValue = log10(1 + 9 * normalized);
     double dB = mappedValue * (VM_DB_MAX - VM_DB_MIN) + VM_DB_MIN;
@@ -78,11 +79,5 @@ double Slider::dBMapping(double in)
 
 double Slider::pourcentMapping(double in)
 {
-    if (in < ANALOG_LOW_THRESOLD)
-        in = ANALOG_LOW_THRESOLD;
-
-    else if (in > ANALOG_HIGH_THRESOLD)
-        in = ANALOG_HIGH_THRESOLD;
-
     return map(in, ANALOG_LOW_THRESOLD, ANALOG_HIGH_THRESOLD, 0., 100.);
 }

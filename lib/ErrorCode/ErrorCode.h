@@ -27,7 +27,7 @@
 // ========== ERROR CODES ========== 
 #define MQTT_TIMEOUT                GEN_ERROR_CODE(ERROR, 1)
 #define MQTT_PUB_ERROR              GEN_ERROR_CODE(ERROR, 2)
-
+#define MQTT_BAD_IN_MSG             GEN_ERROR_CODE(ERROR, 3)
 
 // ==========  FATAL CODES ========== 
 #define WIFI_NOT_CONNECTED          GEN_ERROR_CODE(FATAL, 3)

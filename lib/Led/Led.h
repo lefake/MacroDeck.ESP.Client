@@ -13,6 +13,7 @@ class Led
     public:
         uint16_t init(const uint8_t ledPin);
         uint16_t apply(const bool state);
+        uint16_t toggle();
 };
 
 #endif 

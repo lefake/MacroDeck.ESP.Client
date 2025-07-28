@@ -2,7 +2,7 @@
 #define CONSTANTS_H_
 
 // ========== DEBUG ==========
-#define DEBUG
+// #define DEBUG
 // #define DEBUG_STACK
 
 // ========== BUTTONS ==========
@@ -10,9 +10,9 @@
 #define BTN_ACTIVE              HIGH
 
 // ========== SLIDERS ==========
-#define ROLLING_LENGTH          25
-#define CHANGE_THRES            (0.1)
-#define DIR_MULTIPLIER          -1
+#define ROLLING_LENGTH          100
+#define CHANGE_THRES            (1)
+#define INVERTED_DIRECTION      true
 
 #define ANALOG_LOW_THRESOLD     0
 #define ANALOG_HIGH_THRESOLD    4095
@@ -41,7 +41,7 @@
 
 // ========== WIFI ==========
 #define WIFI_CONNECT_TIMEOUT     5000
-#define MQTT_CONNECT_TIMEOUT     100
+#define MQTT_CONNECT_TIMEOUT     1000
 
 // ========== VOICEMEETER ==========
 #define VM_DB_MIN               (12.0)

@@ -14,8 +14,8 @@ private:
     double rollingMean[ROLLING_LENGTH] = { 0 };
     double rollingSum = 0;
 
-    double currentdB;
-    double lastdB;
+    double currentMapped;
+    double lastMapped;
     
     uint16_t readValue();
     double updateRolling(double value);
