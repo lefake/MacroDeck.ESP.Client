@@ -50,9 +50,11 @@ static void errorHandlingTask(void * parameter);
 static TaskFunction_t taskFct[NB_TASKS] = { pollHardwareTask, pollMqttTask, pushVMTask, pushMacro, errorHandlingTask };
 static char* taskNames[NB_TASKS] = { "Harware", "MQTT", "Slider", "Macro", "Errors" };
 static int stacks[NB_TASKS] = { 3000, 2500, 3000, 3000, 1500 };
-static int taskPriorities[NB_TASKS] = { 3, 4, 2, 1, 5 };
+static int taskPriorities[NB_TASKS] = { 4, 5, 3, 2, 6 };
 static TaskHandle_t taskHandles[NB_TASKS];
 static bool taskRun[NB_TASKS] = { true, true, true, true, true };
+
+static SemaphoreHandle_t shutdown_timer_mutex;
 
 void setup()
 {
@@ -75,6 +77,8 @@ void setup()
             if (ret == OK)
             {
                 Serial.println("Starting");
+
+                shutdown_timer_mutex = xSemaphoreCreateMutex();
                 for (uint8_t i = 0; i < NB_TASKS - 1; ++i)
                     xTaskCreate(taskFct[i], taskNames[i], stacks[i], NULL, taskPriorities[i], &taskHandles[i]);
             }
@@ -94,8 +98,12 @@ void setup()
 void loop()
 {
     ArduinoOTA.handle();
-    if (millis() - last_hb_time > TIME_BEFORE_SLEEP_MS)
-        shutdown();
+    if (xSemaphoreTake(shutdown_timer_mutex, portMAX_DELAY)) {
+        if (millis() - last_hb_time > TIME_BEFORE_SLEEP_MS)
+            shutdown();
+
+        xSemaphoreGive(shutdown_timer_mutex);
+    }
 }
 
 // ==================== Tasks ====================
@@ -270,7 +278,11 @@ void mqtt_in(char* topic, byte* payload, unsigned int length)
     if (strcmp(topic, subscribe_topics[1]) == 0)
     {
         statusLed.toggle();
-        last_hb_time = millis();
+
+        if (xSemaphoreTake(shutdown_timer_mutex, portMAX_DELAY)) {
+            last_hb_time = millis();
+            xSemaphoreGive(shutdown_timer_mutex);
+        }
     }
     else if (strcmp(topic, subscribe_topics[0]) == 0)
     {
@@ -355,9 +367,9 @@ void errorNotify(uint16_t code)
 void shutdown()
 {
     statusLed.apply(false);
+    Serial.println("Shutting down!");
 
 #ifdef DEBUG
-    Serial.println("Shutting down! DODO");
     Serial.println(millis());
     Serial.println(last_hb_time);
 #endif

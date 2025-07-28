@@ -55,7 +55,7 @@
 #define MS_TO_S_FACTOR          1000
 #define S_TO_M_FACTOR           60
 #define SLEEP_TIME              5
-#define SLEEP_TIME_uS           (SLEEP_TIME * S_TO_M_FACTOR * MS_TO_S_FACTOR * uS_TO_MS_FACTOR)
-#define TIME_BEFORE_SLEEP_MS    (1 * S_TO_M_FACTOR * MS_TO_S_FACTOR)
+#define SLEEP_TIME_uS           SLEEP_TIME * (S_TO_M_FACTOR * MS_TO_S_FACTOR * uS_TO_MS_FACTOR)
+#define TIME_BEFORE_SLEEP_MS    1 * (S_TO_M_FACTOR * MS_TO_S_FACTOR)
 
 #endif
